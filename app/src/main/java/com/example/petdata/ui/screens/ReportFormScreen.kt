@@ -1,0 +1,433 @@
+package com.example.petdata.ui.screens
+
+import android.Manifest
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import com.example.petdata.data.local.TokenManager
+import com.example.petdata.ui.components.BottomNavigationBar
+import com.example.petdata.ui.components.RescateTopBar
+import com.example.petdata.ui.theme.*
+import com.example.petdata.ui.viemodel.ReportFormState
+import com.example.petdata.ui.viemodel.ReportFormViewModel
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import com.google.android.gms.location.LocationServices
+
+@OptIn(ExperimentalPermissionsApi::class)
+@Composable
+fun ReportFormScreen(
+    mode: String = "crear",
+    rolId: Int = 1,
+    tokenManager: TokenManager,
+    onNavigateBack: () -> Unit = {},
+    onNavigate: (route: String) -> Unit = {}
+) {
+    val context = LocalContext.current
+    val viewModel: ReportFormViewModel = viewModel(
+        factory = ReportFormViewModel.Factory(tokenManager)
+    )
+    val formState by viewModel.formState.collectAsStateWithLifecycle()
+
+    // Form fields
+    var estadoAnimalId by remember { mutableStateOf(1) }
+    var estadoAnimalNombre by remember { mutableStateOf("Herido") }
+    var prioridadId by remember { mutableStateOf(1) }
+    var prioridadNombre by remember { mutableStateOf("Baja") }
+    var descripcion by remember { mutableStateOf("") }
+    var contacto by remember { mutableStateOf("") }
+    var latitud by remember { mutableStateOf<Double?>(null) }
+    var longitud by remember { mutableStateOf<Double?>(null) }
+    var imagenUri by remember { mutableStateOf<Uri?>(null) }
+    var expandedEstado by remember { mutableStateOf(false) }
+    var expandedPrioridad by remember { mutableStateOf(false) }
+    var showErrorDialog by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
+
+    // Permisos
+    val locationPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
+    val cameraPermission = rememberPermissionState(Manifest.permission.CAMERA)
+
+    // Launchers
+    val galleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri -> uri?.let { imagenUri = it } }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicturePreview()
+    ) { bitmap ->
+        // Convertir bitmap a Uri temporal
+        bitmap?.let {
+            val file = java.io.File(context.cacheDir, "camara_temp.jpg")
+            file.outputStream().use { out ->
+                it.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out)
+            }
+            imagenUri = Uri.fromFile(file)
+        }
+    }
+
+    // Observar estado
+    LaunchedEffect(formState) {
+        when (formState) {
+            is ReportFormState.Success -> {
+                onNavigateBack()
+                viewModel.resetState()
+            }
+            is ReportFormState.Error -> {
+                errorMessage = (formState as ReportFormState.Error).message
+                showErrorDialog = true
+                viewModel.resetState()
+            }
+            else -> {}
+        }
+    }
+
+    if (showErrorDialog) {
+        AlertDialog(
+            onDismissRequest = { showErrorDialog = false },
+            icon = { Text("❌", fontSize = 32.sp) },
+            title = { Text("Error", fontWeight = FontWeight.Bold) },
+            text = { Text(errorMessage) },
+            confirmButton = {
+                Button(
+                    onClick = { showErrorDialog = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
+                ) { Text("Aceptar") }
+            }
+        )
+    }
+
+    Scaffold(
+        topBar = { RescateTopBar() },
+        bottomBar = {
+            BottomNavigationBar(
+                selectedIndex = 1,
+                rolId = rolId,
+                onNavigate = onNavigate
+            )
+        },
+        containerColor = Color(0xFFF5F5F5)
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
+            // Header
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = GreenPrimary)
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("Reportar un Caso", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = White)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Ayúdanos a localizar animales que necesitan ayuda", fontSize = 13.sp, color = White.copy(alpha = 0.9f))
+                }
+            }
+
+            // Form
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = White)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+
+                    // Estado del animal
+                    Text("Estado del Animal *", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box {
+                        OutlinedTextField(
+                            value = estadoAnimalNombre,
+                            onValueChange = {},
+                            readOnly = true,
+                            trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) },
+                            modifier = Modifier.fillMaxWidth().clickable { expandedEstado = true },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedBorderColor = Color(0xFFE0E0E0),
+                                focusedBorderColor = GreenPrimary,
+                                disabledBorderColor = Color(0xFFE0E0E0),
+                                disabledTextColor = TextPrimary
+                            ),
+                            enabled = false
+                        )
+                        DropdownMenu(expanded = expandedEstado, onDismissRequest = { expandedEstado = false }) {
+                            // id según tu catálogo ESTADO_ANIMAL
+                            listOf(1 to "Herido", 2 to "Desnutrido", 3 to "Abandonado", 4 to "Grave").forEach { (id, nombre) ->
+                                DropdownMenuItem(text = { Text(nombre) }, onClick = {
+                                    estadoAnimalId = id
+                                    estadoAnimalNombre = nombre
+                                    expandedEstado = false
+                                })
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Prioridad
+                    Text("Prioridad *", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box {
+                        OutlinedTextField(
+                            value = prioridadNombre,
+                            onValueChange = {},
+                            readOnly = true,
+                            trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) },
+                            modifier = Modifier.fillMaxWidth().clickable { expandedPrioridad = true },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedBorderColor = Color(0xFFE0E0E0),
+                                focusedBorderColor = GreenPrimary,
+                                disabledBorderColor = Color(0xFFE0E0E0),
+                                disabledTextColor = TextPrimary
+                            ),
+                            enabled = false
+                        )
+                        DropdownMenu(expanded = expandedPrioridad, onDismissRequest = { expandedPrioridad = false }) {
+                            listOf(1 to "Baja", 2 to "Media", 3 to "Alta", 4 to "Crítica").forEach { (id, nombre) ->
+                                DropdownMenuItem(text = { Text(nombre) }, onClick = {
+                                    prioridadId = id
+                                    prioridadNombre = nombre
+                                    expandedPrioridad = false
+                                })
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Descripción
+                    Text("Descripción *", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = descripcion,
+                        onValueChange = { descripcion = it },
+                        placeholder = { Text("Detalles sobre el animal...", fontSize = 13.sp) },
+                        modifier = Modifier.fillMaxWidth().height(100.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor = Color(0xFFE0E0E0),
+                            focusedBorderColor = GreenPrimary
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Contacto opcional
+                    Text("Contacto (Opcional)", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = contacto,
+                        onValueChange = { contacto = it },
+                        placeholder = { Text("Teléfono o correo", fontSize = 13.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor = Color(0xFFE0E0E0),
+                            focusedBorderColor = GreenPrimary
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Ubicación GPS
+                    Text("Ubicación *", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (latitud != null) "📍 ${String.format("%.5f", latitud)}, ${String.format("%.5f", longitud)}"
+                            else "Sin ubicación",
+                            fontSize = 13.sp,
+                            color = if (latitud != null) GreenPrimary else TextSecondary,
+                            modifier = Modifier.weight(1f)
+                        )
+                        // Reemplaza el bloque del botón GPS en ReportFormScreen
+                        // Reemplaza el bloque del botón GPS
+                        IconButton(
+                            onClick = {
+                                if (locationPermission.status.isGranted) {
+                                    val client = LocationServices.getFusedLocationProviderClient(context)
+                                    try {
+                                        // Primero solicitar una actualización y luego leer
+                                        val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
+                                            com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
+                                            1000L
+                                        ).setMaxUpdates(1).build()
+
+                                        val callback = object : com.google.android.gms.location.LocationCallback() {
+                                            override fun onLocationResult(result: com.google.android.gms.location.LocationResult) {
+                                                result.lastLocation?.let {
+                                                    android.util.Log.d("GPS", "lat: ${it.latitude}, lng: ${it.longitude}")
+                                                    latitud = it.latitude
+                                                    longitud = it.longitude
+                                                }
+                                                client.removeLocationUpdates(this)
+                                            }
+                                        }
+
+                                        client.requestLocationUpdates(
+                                            locationRequest,
+                                            callback,
+                                            android.os.Looper.getMainLooper()
+                                        )
+                                    } catch (e: SecurityException) {
+                                        android.util.Log.e("GPS", "Sin permiso: ${e.message}")
+                                    }
+                                } else {
+                                    locationPermission.launchPermissionRequest()
+                                }
+                            },
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFFE8F5E9))
+                        ) {
+                            Icon(Icons.Default.MyLocation, contentDescription = "GPS", tint = GreenPrimary)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Imagen
+                    Text("Fotografía *", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (imagenUri != null) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(160.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                        ) {
+                            AsyncImage(
+                                model = imagenUri,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            IconButton(
+                                onClick = { imagenUri = null },
+                                modifier = Modifier.align(Alignment.TopEnd)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = null, tint = White)
+                            }
+                        }
+                    } else {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            // Galería
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(100.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(12.dp))
+                                    .background(Color(0xFFFAFAFA))
+                                    .clickable { galleryLauncher.launch("image/*") },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(Icons.Default.Photo, null, tint = Color(0xFFBDBDBD), modifier = Modifier.size(32.dp))
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text("Galería", fontSize = 12.sp, color = TextSecondary)
+                                }
+                            }
+                            // Cámara
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(100.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(12.dp))
+                                    .background(Color(0xFFFAFAFA))
+                                    .clickable {
+                                        if (cameraPermission.status.isGranted) {
+                                            cameraLauncher.launch(null)
+                                        } else {
+                                            cameraPermission.launchPermissionRequest()
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(Icons.Default.CameraAlt, null, tint = Color(0xFFBDBDBD), modifier = Modifier.size(32.dp))
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text("Cámara", fontSize = 12.sp, color = TextSecondary)
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Botón enviar
+                    val formValido = descripcion.isNotBlank() && latitud != null && imagenUri != null
+                    Button(
+                        onClick = {
+                            if (formValido) {
+                                viewModel.crearReporte(
+                                    context = context,
+                                    estadoAnimalId = estadoAnimalId,
+                                    prioridadId = prioridadId,
+                                    descripcion = descripcion,
+                                    latitud = latitud!!,
+                                    longitud = longitud!!,
+                                    precisionMetros = null,
+                                    contactoOpcional = contacto.ifBlank { null },
+                                    imageUri = imagenUri!!
+                                )
+                            }
+                        },
+                        enabled = formValido && formState !is ReportFormState.Loading,
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        if (formState is ReportFormState.Loading) {
+                            CircularProgressIndicator(color = White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Default.Send, null, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Enviar Reporte", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(20.dp))
+        }
+    }
+}
