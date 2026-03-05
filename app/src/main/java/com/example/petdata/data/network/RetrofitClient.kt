@@ -8,8 +8,11 @@ import retrofit2.converter.gson.GsonConverterFactory
 object RetrofitClient {
     // En desarrollo usa tu IP local, no localhost
 
-    private const val BASE_URL = "http://172.20.10.6:3000/"
-    //private const val BASE_URL = "http://192.168.1.11:3000/"
+    //mi cell
+    //private const val BASE_URL = "http://172.20.10.6:3000/"
+    //mi house
+    private const val BASE_URL = "http://192.168.1.11:3000/"
+    //up
     //private const val BASE_URL = "http://10.10.0.55:3000/"
     val apiService: ApiService by lazy {
         Retrofit.Builder()

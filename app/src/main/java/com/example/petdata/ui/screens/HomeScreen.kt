@@ -98,8 +98,13 @@ fun HomeScreen(
     onNavigate: (route: String) -> Unit = {}
 ) {
     val homeState by viewModel.homeState.collectAsStateWithLifecycle()
-    var selectedFilter by remember { mutableStateOf("Todos") }
-    val filters = listOf("Todos", "Perros", "Gatos", "Urgentes")
+    val filtroTipo by viewModel.filtroTipo.collectAsStateWithLifecycle()
+    val filters = listOf(
+        "Todos"  to null,
+        "Perros" to 1,
+        "Gatos"  to 2,
+        "Otro"   to 3
+    )
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -168,11 +173,11 @@ fun HomeScreen(
                     .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                filters.forEach { filter ->
+                filters.forEach { (label, id) ->
                     FilterChip(
-                        label    = filter,
-                        selected = selectedFilter == filter,
-                        onClick  = { selectedFilter = filter }
+                        label    = label,
+                        selected = filtroTipo == id,
+                        onClick  = { viewModel.setFiltro(id) }
                     )
                 }
             }
