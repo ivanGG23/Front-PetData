@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.map
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "auth_prefs")
 
-class TokenManager(private val context: Context) {
+class TokenManager(val context: Context) {
 
     companion object {
         val TOKEN_KEY = stringPreferencesKey("jwt_token")
@@ -24,6 +24,7 @@ class TokenManager(private val context: Context) {
     val token: Flow<String?> = context.dataStore.data.map { it[TOKEN_KEY] }
     val rolId: Flow<String?> = context.dataStore.data.map { it[ROL_ID_KEY] }
 
+    fun getUserId(): Flow<String?> = context.dataStore.data.map { it[USER_ID_KEY] }
     suspend fun saveSession(token: String, user: UserData) {
         context.dataStore.edit { prefs ->
             prefs[TOKEN_KEY] = token

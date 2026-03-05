@@ -24,6 +24,8 @@ sealed class Screen(val route: String) {
     object ReportDetail : Screen("report_detail/{reporteId}") {
         fun createRoute(reporteId: Int) = "report_detail/$reporteId"
     }
+    object RescuerHistory : Screen("rescuer_history")
+    object RescuerActiveCases : Screen("rescuer_active_cases")
 }
 
 @Composable
@@ -118,7 +120,9 @@ fun NavGraph(
         composable(Screen.Settings.route) {
             SettingsScreen(
                 rolId = rolId,
+                tokenManager = tokenManager,
                 onNavigateBack = { navController.popBackStack() },
+                onNavigate = { route -> navController.navigate(route) },
                 onLogout = {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(0) { inclusive = true }
@@ -134,6 +138,26 @@ fun NavGraph(
                 rolId = rolId,
                 tokenManager = tokenManager,
                 onNavigateBack = { navController.popBackStack() },
+                onNavigate = { route -> navController.navigate(route) }
+            )
+        }
+
+        composable(Screen.RescuerHistory.route) {
+            RescuerHistoryScreen(
+                rolId = rolId,
+                tokenManager = tokenManager,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToDetail = { id -> navController.navigate(Screen.ReportDetail.createRoute(id)) },
+                onNavigate = { route -> navController.navigate(route) }
+            )
+        }
+
+        composable(Screen.RescuerActiveCases.route) {
+            RescuerActiveCasesScreen(
+                rolId = rolId,
+                tokenManager = tokenManager,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToDetail = { id -> navController.navigate(Screen.ReportDetail.createRoute(id)) },
                 onNavigate = { route -> navController.navigate(route) }
             )
         }

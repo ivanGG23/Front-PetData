@@ -13,7 +13,7 @@ object RetrofitClient {
     //mi house
     private const val BASE_URL = "http://10.10.0.24/"
     //up
-    //private const val BASE_URL = "http://10.10.0.55:3000/"
+    //private const val BASE_URL = "http://10.10.0.54:3000/"
     val apiService: ApiService by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
