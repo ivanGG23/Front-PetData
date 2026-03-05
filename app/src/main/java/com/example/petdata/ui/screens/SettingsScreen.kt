@@ -32,6 +32,7 @@ fun SettingsScreen(
     rolId: Int = 1,
     tokenManager: TokenManager,
     onNavigateBack: () -> Unit = {},
+    onNavigate: (String) -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     val viewModel: SettingsViewModel = viewModel(
@@ -269,7 +270,7 @@ fun SettingsScreen(
                                 iconColor = GreenPrimary,
                                 title = "Historial de rescates",
                                 subtitle = "Ver mis rescates completados",
-                                onClick = {"rescuer_history"}
+                                onClick = { onNavigate("rescuer_history") }
                             )
                             SettingsDivider()
                             SettingsItem(
@@ -277,7 +278,7 @@ fun SettingsScreen(
                                 iconColor = Color(0xFF2196F3),
                                 title = "Casos activos",
                                 subtitle = "Ver mis casos en proceso",
-                                onClick = {}
+                                onClick = { onNavigate("rescuer_active_cases") }
                             )
                         }
                     }
