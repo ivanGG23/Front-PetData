@@ -24,6 +24,8 @@ sealed class Screen(val route: String) {
     object ReportDetail : Screen("report_detail/{reporteId}") {
         fun createRoute(reporteId: Int) = "report_detail/$reporteId"
     }
+    object RescuerHistory : Screen("rescuer_history")
+    object RescuerActiveCases : Screen("rescuer_active_cases")
 }
 
 @Composable
@@ -118,6 +120,7 @@ fun NavGraph(
         composable(Screen.Settings.route) {
             SettingsScreen(
                 rolId = rolId,
+                tokenManager = tokenManager,
                 onNavigateBack = { navController.popBackStack() },
                 onLogout = {
                     navController.navigate(Screen.Login.route) {

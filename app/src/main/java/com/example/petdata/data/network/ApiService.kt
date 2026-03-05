@@ -14,6 +14,7 @@ import com.example.petdata.data.model.RegisterRequest
 import com.example.petdata.data.model.RegisterResponse
 import com.example.petdata.data.model.ReporteResponse
 import com.example.petdata.data.model.ReputacionResponse
+import com.example.petdata.data.model.UserData
 import com.example.petdata.data.model.UserStats
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -42,7 +43,8 @@ interface ApiService {
         @Query("estado_id")      estadoId:      Int?    = null,
         @Query("prioridad_id")   prioridadId:   Int?    = null,
         @Query("fecha_inicio")   fechaInicio:   String? = null,
-        @Query("fecha_fin")      fechaFin:      String? = null
+        @Query("fecha_fin")      fechaFin:      String? = null,
+        @Query("rescatista_id")  rescatistaId: Int? = null
     ): List<ReporteResponse>
 
     @GET("reports/{id}")
@@ -132,4 +134,10 @@ interface ApiService {
     suspend fun getGlobalStats(
         @Header("Authorization") token: String
     ): GlobalStats
+
+    @GET("auth/users/{id}")
+    suspend fun getUserById(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    ): UserData
 }
