@@ -24,6 +24,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.petdata.MainActivity
 import com.example.petdata.ui.theme.*
 import com.example.petdata.ui.viewmodel.LoginState
 import com.example.petdata.ui.viewmodel.LoginViewModel
@@ -40,6 +41,7 @@ fun LoginScreen(
     var passwordVisible by remember { mutableStateOf(false) }
 
     val loginState by viewModel.loginState.collectAsStateWithLifecycle()
+    val googleRolId by MainActivity.googleAuthResult.collectAsStateWithLifecycle()
 
     LaunchedEffect(loginState) {
         if (loginState is LoginState.Success) {
