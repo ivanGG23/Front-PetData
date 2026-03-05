@@ -140,3 +140,9 @@ data class HeatmapPoint(
     val prioridad_id: Int,
     val estado_reporte_actual: Int
 )
+
+data class GlobalStats(
+    val activos: Int,
+    val rescatados: Int,
+    val pendientes: Int
+)

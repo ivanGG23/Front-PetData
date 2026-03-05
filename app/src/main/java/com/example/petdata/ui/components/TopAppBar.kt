@@ -41,11 +41,6 @@ fun RescateTopBar() {
                         fontSize = 16.sp,
                         color = White
                     )
-                    Text(
-                        text = "APP OFICIAL",
-                        fontSize = 10.sp,
-                        color = White.copy(alpha = 0.8f)
-                    )
                 }
             }
         },
