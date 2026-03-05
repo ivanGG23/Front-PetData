@@ -1,10 +1,14 @@
 package com.example.petdata.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.example.petdata.MainActivity
 import com.example.petdata.data.local.TokenManager
 import com.example.petdata.ui.screens.*
 import com.example.petdata.ui.viemodel.HomeViewModel
@@ -43,6 +47,21 @@ fun NavGraph(
             val viewModel: LoginViewModel = viewModel(
                 factory = LoginViewModel.Factory(tokenManager)
             )
+
+            // AGREGA ESTO — observar cuando Google auth complete
+            val googleRolId by MainActivity.googleAuthResult.collectAsStateWithLifecycle()
+            LaunchedEffect(googleRolId) {
+                googleRolId?.let { rol ->
+                    MainActivity.googleAuthResult.value = null
+                    onRolIdUpdated(rol)
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                }
+            }
+
+            val context = androidx.compose.ui.platform.LocalContext.current  // AGREGA ESTO
+
             LoginScreen(
                 viewModel = viewModel,
                 onLoginSuccess = { rol ->
@@ -53,6 +72,14 @@ fun NavGraph(
                 },
                 onNavigateToRegister = {
                     navController.navigate(Screen.Register.route)
+                },
+                // AGREGA ESTO
+                onGoogleSignIn = {
+                    val intent = android.content.Intent(
+                        android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse("http://192.168.1.11:3000/auth/google")
+                    )
+                    context.startActivity(intent)
                 }
             )
         }

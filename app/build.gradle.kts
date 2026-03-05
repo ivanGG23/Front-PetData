@@ -83,4 +83,6 @@ dependencies {
     implementation("com.google.android.gms:play-services-location:21.0.1")
     implementation("com.google.accompanist:accompanist-permissions:0.32.0")
     implementation("org.osmdroid:osmdroid-android:6.1.18")
+
+    implementation("com.auth0.android:jwtdecode:2.0.2")
 }
