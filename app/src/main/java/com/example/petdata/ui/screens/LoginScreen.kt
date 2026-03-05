@@ -1,6 +1,7 @@
 package com.example.petdata.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -30,7 +32,8 @@ import com.example.petdata.ui.viewmodel.LoginViewModel
 fun LoginScreen(
     viewModel: LoginViewModel,
     onLoginSuccess: (rolId: Int) -> Unit,
-    onNavigateToRegister: () -> Unit
+    onNavigateToRegister: () -> Unit,
+    onGoogleSignIn: () -> Unit = {}
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -228,6 +231,66 @@ fun LoginScreen(
                             text = "Iniciar Sesión",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Divisor "o"
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    HorizontalDivider(
+                        modifier = Modifier.weight(1f),
+                        color = Color(0xFFE0E0E0)
+                    )
+                    Text(
+                        text = "  o  ",
+                        fontSize = 13.sp,
+                        color = TextSecondary
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.weight(1f),
+                        color = Color(0xFFE0E0E0)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Botón Google
+                OutlinedButton(
+                    onClick = onGoogleSignIn,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = White,
+                        contentColor = TextPrimary
+                    ),
+                    border = ButtonDefaults.outlinedButtonBorder.copy(
+                        width = 1.dp
+                    )
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        // Logo de Google usando texto SVG Unicode
+                        Text(
+                            text = "G",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF4285F4)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Continuar con Google",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextPrimary
                         )
                     }
                 }
