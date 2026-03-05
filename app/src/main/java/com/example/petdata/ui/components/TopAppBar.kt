@@ -44,22 +44,7 @@ fun RescateTopBar() {
                 }
             }
         },
-        actions = {
-            IconButton(onClick = {}) {
-                Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = "Notificaciones",
-                    tint = White
-                )
-            }
-            IconButton(onClick = {}) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Perfil",
-                    tint = White
-                )
-            }
-        },
+
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = GreenPrimary
         )
