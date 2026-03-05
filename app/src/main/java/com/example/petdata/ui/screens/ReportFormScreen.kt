@@ -67,6 +67,10 @@ fun ReportFormScreen(
     var expandedPrioridad by remember { mutableStateOf(false) }
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    var precisionMetros by remember { mutableStateOf<Double?>(null) }
+    var tipoAnimalId     by remember { mutableStateOf(1) }
+    var tipoAnimalNombre by remember { mutableStateOf("Perro") }
+    var expandedTipo     by remember { mutableStateOf(false) }
 
     // Permisos
     val locationPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -130,7 +134,7 @@ fun ReportFormScreen(
                 onNavigate = onNavigate
             )
         },
-        containerColor = Color(0xFFF5F5F5)
+                containerColor = Color(0xFFF5F5F5)
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -161,6 +165,38 @@ fun ReportFormScreen(
                 colors = CardDefaults.cardColors(containerColor = White)
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
+
+                    // Tipo de Animal
+                    Text("Tipo de Animal *", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box {
+                        OutlinedTextField(
+                            value = tipoAnimalNombre,
+                            onValueChange = {},
+                            readOnly = true,
+                            trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) },
+                            modifier = Modifier.fillMaxWidth().clickable { expandedTipo = true },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedBorderColor = Color(0xFFE0E0E0),
+                                focusedBorderColor   = GreenPrimary,
+                                disabledBorderColor  = Color(0xFFE0E0E0),
+                                disabledTextColor    = TextPrimary
+                            ),
+                            enabled = false
+                        )
+                        DropdownMenu(expanded = expandedTipo, onDismissRequest = { expandedTipo = false }) {
+                            listOf(1 to "Perro", 2 to "Gato", 3 to "Otro").forEach { (id, nombre) ->
+                                DropdownMenuItem(text = { Text(nombre) }, onClick = {
+                                    tipoAnimalId     = id
+                                    tipoAnimalNombre = nombre
+                                    expandedTipo     = false
+                                })
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // Estado del animal
                     Text("Estado del Animal *", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
@@ -270,41 +306,53 @@ fun ReportFormScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (latitud != null) "📍 ${String.format("%.5f", latitud)}, ${String.format("%.5f", longitud)}"
+                            text = if (latitud != null) "📍 ${String.format("%.5f", latitud)}, ${String.format("%.5f", longitud)}" +
+                                    (precisionMetros?.let { " (±${it.toInt()}m)" } ?: "")
                             else "Sin ubicación",
                             fontSize = 13.sp,
                             color = if (latitud != null) GreenPrimary else TextSecondary,
                             modifier = Modifier.weight(1f)
                         )
-                        // Reemplaza el bloque del botón GPS en ReportFormScreen
-                        // Reemplaza el bloque del botón GPS
                         IconButton(
                             onClick = {
                                 if (locationPermission.status.isGranted) {
                                     val client = LocationServices.getFusedLocationProviderClient(context)
                                     try {
-                                        // Primero solicitar una actualización y luego leer
-                                        val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
-                                            com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
-                                            1000L
-                                        ).setMaxUpdates(1).build()
+                                        client.lastLocation.addOnSuccessListener { location ->
+                                            if (location != null) {
+                                                latitud = location.latitude
+                                                longitud = location.longitude
+                                                precisionMetros = location.accuracy.toDouble()
+                                                android.util.Log.d("GPS", "lastLocation: lat=${location.latitude}, lng=${location.longitude}, acc=${location.accuracy}m")
+                                            } else {
+                                                val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
+                                                    com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
+                                                    1000L
+                                                )
+                                                    .setMaxUpdates(1)
+                                                    .setWaitForAccurateLocation(false) // ← false en emulador
+                                                    .setMinUpdateIntervalMillis(500L)
+                                                    .build()
 
-                                        val callback = object : com.google.android.gms.location.LocationCallback() {
-                                            override fun onLocationResult(result: com.google.android.gms.location.LocationResult) {
-                                                result.lastLocation?.let {
-                                                    android.util.Log.d("GPS", "lat: ${it.latitude}, lng: ${it.longitude}")
-                                                    latitud = it.latitude
-                                                    longitud = it.longitude
+                                                val callback = object : com.google.android.gms.location.LocationCallback() {
+                                                    override fun onLocationResult(result: com.google.android.gms.location.LocationResult) {
+                                                        result.lastLocation?.let {
+                                                            latitud = it.latitude
+                                                            longitud = it.longitude
+                                                            precisionMetros = it.accuracy.toDouble()
+                                                            android.util.Log.d("GPS", "callback: lat=${it.latitude}, lng=${it.longitude}, acc=${it.accuracy}m")
+                                                        }
+                                                        client.removeLocationUpdates(this)
+                                                    }
                                                 }
-                                                client.removeLocationUpdates(this)
+
+                                                client.requestLocationUpdates(
+                                                    locationRequest,
+                                                    callback,
+                                                    android.os.Looper.getMainLooper()
+                                                )
                                             }
                                         }
-
-                                        client.requestLocationUpdates(
-                                            locationRequest,
-                                            callback,
-                                            android.os.Looper.getMainLooper()
-                                        )
                                     } catch (e: SecurityException) {
                                         android.util.Log.e("GPS", "Sin permiso: ${e.message}")
                                     }
@@ -402,11 +450,12 @@ fun ReportFormScreen(
                                 viewModel.crearReporte(
                                     context = context,
                                     estadoAnimalId = estadoAnimalId,
+                                    tipoAnimalId = tipoAnimalId,
                                     prioridadId = prioridadId,
                                     descripcion = descripcion,
                                     latitud = latitud!!,
                                     longitud = longitud!!,
-                                    precisionMetros = null,
+                                    precisionMetros = precisionMetros,
                                     contactoOpcional = contacto.ifBlank { null },
                                     imageUri = imagenUri!!
                                 )

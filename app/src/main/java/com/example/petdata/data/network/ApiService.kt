@@ -36,7 +36,8 @@ interface ApiService {
 
     @GET("reports")
     suspend fun getReports(
-        @Header("Authorization") token: String
+        @Header("Authorization") token: String,
+        @Query("tipo_animal_id") tipoAnimalId: Int? = null
     ): List<ReporteResponse>
 
     @GET("reports/{id}")
@@ -106,6 +107,7 @@ interface ApiService {
     suspend fun createReport(
         @Header("Authorization") token: String,
         @Part("estado_animal_id") estadoAnimalId: RequestBody,
+        @Part("tipo_animal_id") tipoAnimalId: RequestBody,
         @Part("prioridad_id") prioridadId: RequestBody,
         @Part("descripcion") descripcion: RequestBody,
         @Part("latitud") latitud: RequestBody,

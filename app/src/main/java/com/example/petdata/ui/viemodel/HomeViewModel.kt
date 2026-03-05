@@ -22,7 +22,14 @@ class HomeViewModel(private val tokenManager: TokenManager) : ViewModel() {
     private val _homeState = MutableStateFlow<HomeState>(HomeState.Loading)
     val homeState: StateFlow<HomeState> = _homeState
 
-    init {
+    // 0 = Todos, 1 = Perro, 2 = Gato, 3 = Otro
+    private val _filtroTipo = MutableStateFlow<Int?>(null)
+    val filtroTipo: StateFlow<Int?> = _filtroTipo
+
+    init { loadReportes() }
+
+    fun setFiltro(tipoAnimalId: Int?) {
+        _filtroTipo.value = tipoAnimalId
         loadReportes()
     }
 
@@ -30,8 +37,10 @@ class HomeViewModel(private val tokenManager: TokenManager) : ViewModel() {
         viewModelScope.launch {
             _homeState.value = HomeState.Loading
             try {
-                val token = tokenManager.token.first() ?: ""
-                val reportes = RetrofitClient.apiServiceWithToken(token).getReports("Bearer $token")
+                val token    = tokenManager.token.first() ?: ""
+                val reportes = RetrofitClient
+                    .apiServiceWithToken(token)
+                    .getReports("Bearer $token", tipoAnimalId = _filtroTipo.value)
                 _homeState.value = HomeState.Success(reportes)
             } catch (e: Exception) {
                 android.util.Log.e("HomeViewModel", "Error: ${e.message}")
