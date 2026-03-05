@@ -46,8 +46,8 @@ data class ReportItem(
     val location: String,
     val timeAgo: String,
     val health: String?,
-    val priority: String,         // "MEDIA" | "ALTA" | "BAJA"
-    val status: String,           // "En Proceso" | "Pendiente" | "Rescatado"
+    val priority: String,
+    val status: String,
     val imageUrl: String
 )
 
@@ -362,21 +362,7 @@ fun RescateTopBar() {
                         fontSize   = 16.sp,
                         color      = White
                     )
-                    Text(
-                        text     = "APP OFICIAL",
-                        fontSize = 10.sp,
-                        color    = White.copy(alpha = 0.8f)
-                    )
                 }
-            }
-        },
-        actions = {
-            IconButton(onClick = {}) {
-                Icon(
-                    imageVector        = Icons.Default.Notifications,
-                    contentDescription = "Notificaciones",
-                    tint               = White
-                )
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(

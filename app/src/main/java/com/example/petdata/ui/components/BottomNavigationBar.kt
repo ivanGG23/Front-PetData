@@ -78,7 +78,6 @@ fun BottomNavigationBar(
             )
         )
 
-        // Solo rescatistas ven Dashboard
         if (rolId == 2) {
             NavigationBarItem(
                 selected = selectedIndex == 3,
