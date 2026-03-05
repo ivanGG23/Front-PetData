@@ -148,3 +148,9 @@ data class TipoAnimal(
     val nombre: String,
     val descripcion: String
 )
+
+data class GlobalStats(
+    val activos: Int,
+    val rescatados: Int,
+    val pendientes: Int
+)

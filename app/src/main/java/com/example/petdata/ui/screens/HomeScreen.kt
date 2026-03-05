@@ -1,25 +1,23 @@
 package com.example.petdata.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -31,8 +29,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.example.petdata.data.model.GlobalStats
 import com.example.petdata.data.model.ReporteResponse
-import com.example.petdata.navigation.Screen
 import com.example.petdata.ui.components.BottomNavigationBar
 import com.example.petdata.ui.theme.*
 import com.example.petdata.ui.viemodel.HomeState
@@ -53,42 +51,10 @@ data class ReportItem(
     val imageUrl: String
 )
 
-val sampleReports = listOf(
-    ReportItem(
-        title       = "Perro - Rescate",
-        description = "Perro mestizo encontrado cerca de la fuente. Parece desorientado pero dócil. Collar rojo sin...",
-        location    = "Parque Central, Zona Norte",
-        timeAgo     = "Hace 2 horas",
-        health      = "Salud: Estable",
-        priority    = "MEDIA",
-        status      = "En Proceso",
-        imageUrl    = "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=600"
-    ),
-    ReportItem(
-        title       = "Gato - Reporte",
-        description = "Colonia de gatos en edificio abandonado. Se necesitan voluntarios para captura y...",
-        location    = "Av. Las Américas",
-        timeAgo     = "Hace 5 horas",
-        health      = null,
-        priority    = "BAJA",
-        status      = "Pendiente",
-        imageUrl    = "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600"
-    ),
-    ReportItem(
-        title       = "Perro - Rescate",
-        description = "Cachorros encontrados en caja. Ya fueron...",
-        location    = "Calle Principal",
-        timeAgo     = "Hace 8 horas",
-        health      = null,
-        priority    = "ALTA",
-        status      = "Rescatado",
-        imageUrl    = "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600"
-    )
-)
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Root screen
 // ─────────────────────────────────────────────────────────────────────────────
+
 @Composable
 fun HomeScreen(
     rolId: Int = 1,
@@ -98,13 +64,7 @@ fun HomeScreen(
     onNavigate: (route: String) -> Unit = {}
 ) {
     val homeState by viewModel.homeState.collectAsStateWithLifecycle()
-    val filtroTipo by viewModel.filtroTipo.collectAsStateWithLifecycle()
-    val filters = listOf(
-        "Todos"  to null,
-        "Perros" to 1,
-        "Gatos"  to 2,
-        "Otro"   to 3
-    )
+    val globalStats by viewModel.globalStats.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -137,7 +97,7 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             // ── Monthly summary ──
-            MonthlySummarySection()
+            MonthlySummarySection(stats = globalStats)
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -165,7 +125,14 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Filter chips (horizontally scrollable)
+// ── Chips tipo animal ──
+            val filtroTipo      by viewModel.filtroTipo.collectAsStateWithLifecycle()
+            val filtroEstado    by viewModel.filtroEstado.collectAsStateWithLifecycle()
+            val filtroPrioridad by viewModel.filtroPrioridad.collectAsStateWithLifecycle()
+            val filtroFecha     by viewModel.filtroFecha.collectAsStateWithLifecycle()
+
+            val tipoFiltros = listOf("Todos" to null, "Perros" to 1, "Gatos" to 2, "Otro" to 3)
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -173,12 +140,125 @@ fun HomeScreen(
                     .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                filters.forEach { (label, id) ->
+                tipoFiltros.forEach { (label, id) ->
                     FilterChip(
                         label    = label,
                         selected = filtroTipo == id,
-                        onClick  = { viewModel.setFiltro(id) }
+                        onClick  = { viewModel.setFiltroTipo(id) }
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+// ── Dropdowns de filtros ──
+            var expandedEstado    by remember { mutableStateOf(false) }
+            var expandedPrioridad by remember { mutableStateOf(false) }
+            var expandedFecha     by remember { mutableStateOf(false) }
+
+            val estadoOpciones    = listOf(null to "Estado", 1 to "Pendiente", 2 to "En revisión", 3 to "En proceso", 4 to "Resuelto", 5 to "Falso")
+            val prioridadOpciones = listOf(null to "Prioridad", 1 to "Baja", 2 to "Media", 3 to "Alta", 4 to "Crítica")
+            val fechaOpciones     = listOf(null to "Fecha", "hoy" to "Hoy", "semana" to "Esta semana", "mes" to "Este mes")
+
+            val estadoLabel    = estadoOpciones.find    { it.first == filtroEstado }?.second    ?: "Estado"
+            val prioridadLabel = prioridadOpciones.find { it.first == filtroPrioridad }?.second ?: "Prioridad"
+            val fechaLabel     = fechaOpciones.find     { it.first == filtroFecha }?.second     ?: "Fecha"
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Dropdown Estado
+                Box(modifier = Modifier.weight(1f)) {
+                    OutlinedButton(
+                        onClick = { expandedEstado = true },
+                        shape  = RoundedCornerShape(50),
+                        border = ButtonDefaults.outlinedButtonBorder,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = if (filtroEstado != null) GreenPrimary else Color.Transparent,
+                            contentColor   = if (filtroEstado != null) Color.White else TextPrimary
+                        ),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(estadoLabel, fontSize = 12.sp, maxLines = 1)
+                        Icon(Icons.Default.ArrowDropDown, null, modifier = Modifier.size(16.dp))
+                    }
+                    DropdownMenu(expanded = expandedEstado, onDismissRequest = { expandedEstado = false }) {
+                        estadoOpciones.forEach { (id, nombre) ->
+                            DropdownMenuItem(text = { Text(nombre) }, onClick = {
+                                viewModel.setFiltroEstado(id)
+                                expandedEstado = false
+                            })
+                        }
+                    }
+                }
+
+                // Dropdown Prioridad
+                Box(modifier = Modifier.weight(1f)) {
+                    OutlinedButton(
+                        onClick = { expandedPrioridad = true },
+                        shape  = RoundedCornerShape(50),
+                        border = ButtonDefaults.outlinedButtonBorder,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = if (filtroPrioridad != null) GreenPrimary else Color.Transparent,
+                            contentColor   = if (filtroPrioridad != null) Color.White else TextPrimary
+                        ),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(prioridadLabel, fontSize = 12.sp, maxLines = 1)
+                        Icon(Icons.Default.ArrowDropDown, null, modifier = Modifier.size(16.dp))
+                    }
+                    DropdownMenu(expanded = expandedPrioridad, onDismissRequest = { expandedPrioridad = false }) {
+                        prioridadOpciones.forEach { (id, nombre) ->
+                            DropdownMenuItem(text = { Text(nombre) }, onClick = {
+                                viewModel.setFiltroPrioridad(id)
+                                expandedPrioridad = false
+                            })
+                        }
+                    }
+                }
+
+                // Dropdown Fecha
+                Box(modifier = Modifier.weight(1f)) {
+                    OutlinedButton(
+                        onClick = { expandedFecha = true },
+                        shape  = RoundedCornerShape(50),
+                        border = ButtonDefaults.outlinedButtonBorder,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = if (filtroFecha != null) GreenPrimary else Color.Transparent,
+                            contentColor   = if (filtroFecha != null) Color.White else TextPrimary
+                        ),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(fechaLabel, fontSize = 12.sp, maxLines = 1)
+                        Icon(Icons.Default.ArrowDropDown, null, modifier = Modifier.size(16.dp))
+                    }
+                    DropdownMenu(expanded = expandedFecha, onDismissRequest = { expandedFecha = false }) {
+                        fechaOpciones.forEach { (valor, nombre) ->
+                            DropdownMenuItem(text = { Text(nombre) }, onClick = {
+                                viewModel.setFiltroFecha(valor)
+                                expandedFecha = false
+                            })
+                        }
+                    }
+                }
+            }
+
+            // Botón limpiar filtros (solo visible si hay algún filtro activo)
+            if (filtroTipo != null || filtroEstado != null || filtroPrioridad != null || filtroFecha != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(
+                    onClick = { viewModel.limpiarFiltros() },
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                ) {
+                    Icon(Icons.Default.Close, null, modifier = Modifier.size(14.dp), tint = GreenPrimary)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Limpiar filtros", fontSize = 12.sp, color = GreenPrimary)
                 }
             }
 
@@ -383,7 +463,7 @@ fun HeroBanner(onNavigateToReport: (mode: String) -> Unit = {}) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-fun MonthlySummarySection() {
+fun MonthlySummarySection(stats: GlobalStats?) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         Text(
             text       = "Resumen Mensual",
@@ -398,25 +478,25 @@ fun MonthlySummarySection() {
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             StatCard(
-                label      = "Casos Activos",
-                value      = "142",
-                change     = "↑ 12%",
-                changeUp   = true,
-                modifier   = Modifier.weight(1f)
+                label    = "En Proceso",
+                value    = stats?.activos?.toString() ?: "...",
+                change   = null,
+                changeUp = true,
+                modifier = Modifier.weight(1f)
             )
             StatCard(
-                label      = "Rescatados",
-                value      = "856",
-                change     = "↑ 5%",
-                changeUp   = true,
-                modifier   = Modifier.weight(1f)
+                label    = "Rescatados",
+                value    = stats?.rescatados?.toString() ?: "...",
+                change   = null,
+                changeUp = true,
+                modifier = Modifier.weight(1f)
             )
             StatCard(
-                label      = "Ado...",     // truncated like in screenshot
-                value      = "64",
-                change     = null,
-                changeUp   = true,
-                modifier   = Modifier.weight(1f)
+                label    = "Pendientes",
+                value    = stats?.pendientes?.toString() ?: "...",
+                change   = null,
+                changeUp = true,
+                modifier = Modifier.weight(1f)
             )
         }
     }
