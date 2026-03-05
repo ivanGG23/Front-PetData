@@ -60,6 +60,7 @@ data class ReporteResponse(
     val estado_animal_id: Int,
     val estado_reporte_actual: Int,
     val prioridad_id: Int,
+    val tipo_animal_id: Int,
     val descripcion: String,
     val fecha_creacion: String,
     val fecha_asig: String?,
@@ -68,6 +69,7 @@ data class ReporteResponse(
     val estado_animal: EstadoAnimal,
     val estado_reporte: EstadoReporte,
     val prioridad: Prioridad,
+    val tipoAnimal: TipoAnimal,
     val creador: UsuarioResumen?,
     val rescatista: UsuarioResumen?,
     val imagen_url: String?
@@ -141,8 +143,8 @@ data class HeatmapPoint(
     val estado_reporte_actual: Int
 )
 
-data class GlobalStats(
-    val activos: Int,
-    val rescatados: Int,
-    val pendientes: Int
+data class TipoAnimal(
+    val id: Int,
+    val nombre: String,
+    val descripcion: String
 )

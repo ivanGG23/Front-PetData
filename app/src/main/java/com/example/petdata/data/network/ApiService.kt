@@ -5,7 +5,6 @@ import com.example.petdata.data.model.ComentarioResponse
 import com.example.petdata.data.model.CreateComentarioRequest
 import com.example.petdata.data.model.CreateReporteResponse
 import com.example.petdata.data.model.Evidencia
-import com.example.petdata.data.model.GlobalStats
 import com.example.petdata.data.model.HeatmapPoint
 import com.example.petdata.data.model.HistorialEstado
 import com.example.petdata.data.model.LoginRequest
@@ -38,11 +37,7 @@ interface ApiService {
     @GET("reports")
     suspend fun getReports(
         @Header("Authorization") token: String,
-        @Query("tipo_animal_id") tipoAnimalId:  Int?    = null,
-        @Query("estado_id")      estadoId:      Int?    = null,
-        @Query("prioridad_id")   prioridadId:   Int?    = null,
-        @Query("fecha_inicio")   fechaInicio:   String? = null,
-        @Query("fecha_fin")      fechaFin:      String? = null
+        @Query("tipo_animal_id") tipoAnimalId: Int? = null
     ): List<ReporteResponse>
 
     @GET("reports/{id}")
@@ -112,6 +107,7 @@ interface ApiService {
     suspend fun createReport(
         @Header("Authorization") token: String,
         @Part("estado_animal_id") estadoAnimalId: RequestBody,
+        @Part("tipo_animal_id") tipoAnimalId: RequestBody,
         @Part("prioridad_id") prioridadId: RequestBody,
         @Part("descripcion") descripcion: RequestBody,
         @Part("latitud") latitud: RequestBody,
@@ -126,9 +122,4 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Query("estado_reporte_id") estadoReporteId: Int? = null
     ): List<HeatmapPoint>
-
-    @GET("reports/stats/global")
-    suspend fun getGlobalStats(
-        @Header("Authorization") token: String
-    ): GlobalStats
 }

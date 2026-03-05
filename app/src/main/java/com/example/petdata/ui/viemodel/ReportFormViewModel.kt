@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.petdata.data.local.TokenManager
+import com.example.petdata.data.model.TipoAnimal
 import com.example.petdata.data.network.RetrofitClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,6 +34,7 @@ class ReportFormViewModel(private val tokenManager: TokenManager) : ViewModel() 
     fun crearReporte(
         context: Context,
         estadoAnimalId: Int,
+        tipoAnimalId: Int,
         prioridadId: Int,
         descripcion: String,
         latitud: Double,
@@ -67,6 +69,7 @@ class ReportFormViewModel(private val tokenManager: TokenManager) : ViewModel() 
                 val result = api.createReport(
                     token       = "Bearer $token",
                     estadoAnimalId = toText(estadoAnimalId.toString()),
+                    tipoAnimalId   = toText(tipoAnimalId.toString()),
                     prioridadId    = toText(prioridadId.toString()),
                     descripcion    = toText(descripcion),
                     latitud        = toText(latitud.toString()),
