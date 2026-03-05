@@ -25,7 +25,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.petdata.ui.theme.*
 import com.example.petdata.ui.viemodel.RegisterState
 import com.example.petdata.ui.viemodel.RegisterViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     viewModel: RegisterViewModel,
@@ -41,6 +45,7 @@ fun RegisterScreen(
     var isRescuer by remember { mutableStateOf(false) }
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     val registerState by viewModel.registerState.collectAsStateWithLifecycle()
     var showSuccessDialog by remember { mutableStateOf(false) }
@@ -59,6 +64,40 @@ fun RegisterScreen(
                 showErrorDialog = true
             }
             else -> {}
+        }
+    }
+
+    // DatePicker state
+    val datePickerState = rememberDatePickerState()
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                            birthDate = sdf.format(Date(millis))
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("Aceptar", color = GreenPrimary)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancelar", color = TextSecondary)
+                }
+            }
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    selectedDayContainerColor = GreenPrimary,
+                    todayDateBorderColor = GreenPrimary
+                )
+            )
         }
     }
 
@@ -296,17 +335,33 @@ fun RegisterScreen(
                 )
                 OutlinedTextField(
                     value = birthDate,
-                    onValueChange = { birthDate = it },
-                    placeholder = { Text("YYYY-MM-DD", fontSize = 14.sp) },
+                    onValueChange = {},
+                    readOnly = true,
+                    placeholder = { Text("Seleccionar fecha", fontSize = 14.sp) },
                     leadingIcon = {
                         Icon(Icons.Default.DateRange, contentDescription = null, tint = TextSecondary)
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        if (birthDate.isNotEmpty()) {
+                            IconButton(onClick = { birthDate = "" }) {
+                                Icon(Icons.Default.Close, contentDescription = "Limpiar", tint = TextSecondary)
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker = true },
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedBorderColor = Color(0xFFE0E0E0),
-                        focusedBorderColor = GreenPrimary
-                    )
+                        focusedBorderColor = GreenPrimary,
+                        disabledBorderColor = Color(0xFFE0E0E0),
+                        disabledTextColor = TextPrimary,
+                        disabledPlaceholderColor = TextSecondary,
+                        disabledLeadingIconColor = TextSecondary,
+                        disabledTrailingIconColor = TextSecondary
+                    ),
+                    enabled = false
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
