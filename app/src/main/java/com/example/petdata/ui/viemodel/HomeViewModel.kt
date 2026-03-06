@@ -50,8 +50,9 @@ class HomeViewModel(private val tokenManager: TokenManager) : ViewModel() {
                     .apiServiceWithToken(token)
                     .getGlobalStats("Bearer $token")
                 _globalStats.value = stats
+                android.util.Log.d("HomeViewModel", "Stats: activos=${stats.activos} rescatados=${stats.rescatados} pendientes=${stats.pendientes}")
             } catch (e: Exception) {
-                android.util.Log.e("HomeViewModel", "Stats error: ${e.message}")
+                android.util.Log.e("HomeViewModel", "Stats error: ${e.message}", e)
             }
         }
     }
@@ -103,7 +104,7 @@ class HomeViewModel(private val tokenManager: TokenManager) : ViewModel() {
         }
     }
 
-    class Factory(private val tokenManager: TokenManager) : ViewModelProvider.Factory {
+        class Factory(private val tokenManager: TokenManager) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             @Suppress("UNCHECKED_CAST")
             return HomeViewModel(tokenManager) as T

@@ -115,17 +115,11 @@ fun HomeScreen(
                     fontSize   = 18.sp,
                     color      = TextPrimary
                 )
-                Text(
-                    text     = "Ver todos",
-                    color    = GreenPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-// ── Chips tipo animal ──
+            // ── Chips tipo animal ──
             val filtroTipo      by viewModel.filtroTipo.collectAsStateWithLifecycle()
             val filtroEstado    by viewModel.filtroEstado.collectAsStateWithLifecycle()
             val filtroPrioridad by viewModel.filtroPrioridad.collectAsStateWithLifecycle()
@@ -151,7 +145,7 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-// ── Dropdowns de filtros ──
+            // ── Dropdowns de filtros ──
             var expandedEstado    by remember { mutableStateOf(false) }
             var expandedPrioridad by remember { mutableStateOf(false) }
             var expandedFecha     by remember { mutableStateOf(false) }
@@ -452,7 +446,7 @@ fun HeroBanner(onNavigateToReport: (mode: String) -> Unit = {}) {
 fun MonthlySummarySection(stats: GlobalStats?) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         Text(
-            text       = "Resumen Mensual",
+            text       = "Resumen De Reportes",
             fontWeight = FontWeight.Bold,
             fontSize   = 18.sp,
             color      = TextPrimary
@@ -720,7 +714,7 @@ fun StatusBadge(status: String, modifier: Modifier = Modifier) {
     val color = when (status) {
         "En Proceso" -> BadgeEnProceso
         "Rescatado"  -> BadgeRescatado
-        else         -> BadgePendiente   // Pendiente
+        else         -> BadgePendiente
     }
     Box(
         modifier = modifier
