@@ -150,7 +150,28 @@ data class TipoAnimal(
 )
 
 data class GlobalStats(
+    val especies: List<EspecieStat>,
+    val historial: List<HistorialStat>,
+    val zonas: List<ZonaStat>,
     val activos: Int,
     val rescatados: Int,
     val pendientes: Int
+)
+
+data class EspecieStat(
+    val tipo_animal_id: Int,
+    val nombre: String,
+    val total: Int
+)
+
+data class HistorialStat(
+    val periodo: String,
+    val nuevos: Int,
+    val resueltos: Int
+)
+
+data class ZonaStat(
+    val zona: String,
+    val total: Int,
+    val resueltos: Int
 )

@@ -73,7 +73,6 @@ fun NavGraph(
                 onNavigateToRegister = {
                     navController.navigate(Screen.Register.route)
                 },
-                // AGREGA ESTO
                 onGoogleSignIn = {
                     val intent = android.content.Intent(
                         android.content.Intent.ACTION_VIEW,
@@ -138,6 +137,7 @@ fun NavGraph(
 
         composable(Screen.Dashboard.route) {
             DashboardScreen(
+                tokenManager = tokenManager,
                 onNavigate = { route ->
                     navController.navigate(route)
                 }
