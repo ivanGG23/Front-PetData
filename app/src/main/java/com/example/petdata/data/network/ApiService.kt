@@ -140,4 +140,17 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Path("id") id: Int
     ): UserData
+
+    @PUT("auth/users/{id}")
+    suspend fun updateUser(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int,
+        @Body body: Map<String, String>
+    ): UserData
+
+    @POST("auth/users/{id}/solicitar-rescatista")
+    suspend fun solicitarRescatista(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    )
 }

@@ -96,12 +96,11 @@ fun SettingsScreen(
     Scaffold(
         topBar = { RescateTopBar() },
         bottomBar = {
+            val settingsIndex = if (rolId == 2) 4 else 3  // ← agregar esta línea
             BottomNavigationBar(
-                selectedIndex = 3,
+                selectedIndex = settingsIndex,              // ← usar índice dinámico
                 rolId = rolId,
-                onNavigate = { route ->
-                    if (route != "settings") onNavigateBack()
-                }
+                onNavigate = onNavigate                     // ← usar onNavigate directo
             )
         },
         containerColor = Color(0xFFF5F5F5)
@@ -197,9 +196,9 @@ fun SettingsScreen(
                         SettingsItem(
                             icon = Icons.Default.Lock,
                             iconColor = Color(0xFF2196F3),
-                            title = "Cambiar contraseña",
-                            subtitle = "Actualiza tu contraseña",
-                            onClick = { showChangePasswordDialog = true }
+                            title = "Información personal",
+                            subtitle = "Edita tu nombre, teléfono y más",
+                            onClick = { onNavigate("personal_info") }
                         )
                     }
 
