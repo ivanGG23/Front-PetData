@@ -16,7 +16,10 @@ data class UserData(
     val apellido: String,
     val correo: String,
     val rol_id: Int,
-    val avatar_url: String?
+    val avatar_url: String?,
+    val telefono: String? = null,
+    val fecha_nacimiento: String? = null,
+    val auth_provider: String? = null
 )
 
 data class RegisterRequest(

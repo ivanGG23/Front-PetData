@@ -137,6 +137,7 @@ fun NavGraph(
 
         composable(Screen.Dashboard.route) {
             DashboardScreen(
+                rolId = rolId,
                 tokenManager = tokenManager,
                 onNavigate = { route ->
                     navController.navigate(route)
@@ -186,6 +187,13 @@ fun NavGraph(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToDetail = { id -> navController.navigate(Screen.ReportDetail.createRoute(id)) },
                 onNavigate = { route -> navController.navigate(route) }
+            )
+        }
+
+        composable("personal_info") {
+            PersonalInfoScreen(
+                tokenManager = tokenManager,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

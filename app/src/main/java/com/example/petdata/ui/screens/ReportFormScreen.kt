@@ -300,73 +300,74 @@ fun ReportFormScreen(
                     // Ubicación GPS
                     Text("Ubicación *", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = if (latitud != null) "📍 ${String.format("%.5f", latitud)}, ${String.format("%.5f", longitud)}" +
-                                    (precisionMetros?.let { " (±${it.toInt()}m)" } ?: "")
-                            else "Sin ubicación",
-                            fontSize = 13.sp,
-                            color = if (latitud != null) GreenPrimary else TextSecondary,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(
-                            onClick = {
-                                if (locationPermission.status.isGranted) {
-                                    val client = LocationServices.getFusedLocationProviderClient(context)
-                                    try {
-                                        client.lastLocation.addOnSuccessListener { location ->
-                                            if (location != null) {
-                                                latitud = location.latitude
-                                                longitud = location.longitude
-                                                precisionMetros = location.accuracy.toDouble()
-                                                android.util.Log.d("GPS", "lastLocation: lat=${location.latitude}, lng=${location.longitude}, acc=${location.accuracy}m")
-                                            } else {
-                                                val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
-                                                    com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
-                                                    1000L
-                                                )
-                                                    .setMaxUpdates(1)
-                                                    .setWaitForAccurateLocation(false) // ← false en emulador
-                                                    .setMinUpdateIntervalMillis(500L)
-                                                    .build()
 
-                                                val callback = object : com.google.android.gms.location.LocationCallback() {
-                                                    override fun onLocationResult(result: com.google.android.gms.location.LocationResult) {
-                                                        result.lastLocation?.let {
-                                                            latitud = it.latitude
-                                                            longitud = it.longitude
-                                                            precisionMetros = it.accuracy.toDouble()
-                                                            android.util.Log.d("GPS", "callback: lat=${it.latitude}, lng=${it.longitude}, acc=${it.accuracy}m")
-                                                        }
-                                                        client.removeLocationUpdates(this)
+                    val ubicacionObtenida = latitud != null
+
+                    Button(
+                        onClick = {
+                            if (locationPermission.status.isGranted) {
+                                val client = LocationServices.getFusedLocationProviderClient(context)
+                                try {
+                                    client.lastLocation.addOnSuccessListener { location ->
+                                        if (location != null) {
+                                            latitud = location.latitude
+                                            longitud = location.longitude
+                                            precisionMetros = location.accuracy.toDouble()
+                                        } else {
+                                            val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
+                                                com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
+                                                1000L
+                                            )
+                                                .setMaxUpdates(1)
+                                                .setWaitForAccurateLocation(false)
+                                                .setMinUpdateIntervalMillis(500L)
+                                                .build()
+
+                                            val callback = object : com.google.android.gms.location.LocationCallback() {
+                                                override fun onLocationResult(result: com.google.android.gms.location.LocationResult) {
+                                                    result.lastLocation?.let {
+                                                        latitud = it.latitude
+                                                        longitud = it.longitude
+                                                        precisionMetros = it.accuracy.toDouble()
                                                     }
+                                                    client.removeLocationUpdates(this)
                                                 }
-
-                                                client.requestLocationUpdates(
-                                                    locationRequest,
-                                                    callback,
-                                                    android.os.Looper.getMainLooper()
-                                                )
                                             }
+
+                                            client.requestLocationUpdates(
+                                                locationRequest,
+                                                callback,
+                                                android.os.Looper.getMainLooper()
+                                            )
                                         }
-                                    } catch (e: SecurityException) {
-                                        android.util.Log.e("GPS", "Sin permiso: ${e.message}")
                                     }
-                                } else {
-                                    locationPermission.launchPermissionRequest()
+                                } catch (e: SecurityException) {
+                                    android.util.Log.e("GPS", "Sin permiso: ${e.message}")
                                 }
-                            },
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFFE8F5E9))
-                        ) {
-                            Icon(Icons.Default.MyLocation, contentDescription = "GPS", tint = GreenPrimary)
-                        }
+                            } else {
+                                locationPermission.launchPermissionRequest()
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (ubicacionObtenida) Color(0xFFE8F5E9) else GreenPrimary,
+                            contentColor = if (ubicacionObtenida) GreenPrimary else White
+                        )
+                    ) {
+                        Icon(
+                            imageVector = if (ubicacionObtenida) Icons.Default.CheckCircle else Icons.Default.MyLocation,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (ubicacionObtenida) "✓ Ubicación obtenida" else "Obtener ubicación actual",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))

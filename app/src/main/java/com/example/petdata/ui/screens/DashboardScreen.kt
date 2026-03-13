@@ -31,6 +31,7 @@ import com.example.petdata.ui.viemodel.DashboardViewModel
 
 @Composable
 fun DashboardScreen(
+    rolId: Int = 2,
     tokenManager: TokenManager,
     onNavigate: (route: String) -> Unit = {}
 ) {
@@ -45,7 +46,7 @@ fun DashboardScreen(
         topBar = { RescateTopBar() },
         bottomBar = {
             BottomNavigationBar(
-                selectedIndex = 4,
+                selectedIndex = 3,
                 rolId = 2,
                 onNavigate = onNavigate
             )
