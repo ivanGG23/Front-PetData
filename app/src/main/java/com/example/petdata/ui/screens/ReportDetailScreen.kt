@@ -1,7 +1,10 @@
 package com.example.petdata.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,14 +17,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.example.petdata.data.local.TokenManager
 import com.example.petdata.data.model.ComentarioResponse
-import com.example.petdata.data.model.HistorialEstado
 import com.example.petdata.ui.theme.*
 import com.example.petdata.ui.viemodel.AccionState
 import com.example.petdata.ui.viemodel.ComentarioState
@@ -368,6 +372,31 @@ fun ReportDetailScreen(
 
             // ── Evidencias ──
             if (state.evidencias.isNotEmpty()) {
+                var imagenSeleccionada by remember { mutableStateOf<String?>(null) }
+
+                // Dialog visor pantalla completa
+                if (imagenSeleccionada != null) {
+                    AlertDialog(
+                        onDismissRequest = { imagenSeleccionada = null },
+                        confirmButton = {
+                            TextButton(onClick = { imagenSeleccionada = null }) {
+                                Text("Cerrar", color = GreenPrimary)
+                            }
+                        },
+                        text = {
+                            coil.compose.AsyncImage(
+                                model = imagenSeleccionada,
+                                contentDescription = null,
+                                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 200.dp, max = 400.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                            )
+                        }
+                    )
+                }
+
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -384,36 +413,50 @@ fun ReportDetailScreen(
                             color = TextPrimary
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        state.evidencias.forEach { evidencia ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.Image,
-                                    contentDescription = null,
-                                    tint = GreenPrimary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column {
-                                    Text(
-                                        text = evidencia.tipo.replaceFirstChar { it.uppercase() },
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = TextPrimary
-                                    )
+
+                        androidx.compose.foundation.lazy.LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(state.evidencias) { evidencia ->
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(120.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .clickable { imagenSeleccionada = evidencia.url_img }
+                                    ) {
+                                        coil.compose.AsyncImage(
+                                            model = evidencia.url_img,
+                                            contentDescription = null,
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                        // Badge tipo
+                                        Box(
+                                            modifier = Modifier
+                                                .align(Alignment.BottomStart)
+                                                .padding(6.dp)
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(Color.Black.copy(alpha = 0.55f))
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = evidencia.tipo.replaceFirstChar { it.uppercase() },
+                                                fontSize = 10.sp,
+                                                color = White,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = calcularTiempo(evidencia.fecha_subido),
                                         fontSize = 11.sp,
                                         color = TextSecondary
                                     )
                                 }
-                            }
-                            if (evidencia != state.evidencias.last()) {
-                                HorizontalDivider(color = Color(0xFFEEEEEE))
                             }
                         }
                     }
