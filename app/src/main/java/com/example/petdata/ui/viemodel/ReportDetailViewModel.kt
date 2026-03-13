@@ -63,9 +63,17 @@ class ReportDetailViewModel(private val tokenManager: TokenManager) : ViewModel(
 
                 // Llamadas paralelas para stats y reputación del creador
                 val (userStats, reputacion) = try {
-                    val stats = async { api.getUserStats("Bearer $token", reporte.usuario_creador_id) }
-                    val rep = async { api.getReputacion("Bearer $token", reporte.usuario_creador_id) }
-                    Pair(stats.await(), rep.await())
+                    kotlinx.coroutines.supervisorScope {
+                        val stats = async {
+                            try { api.getUserStats("Bearer $token", reporte.usuario_creador_id) }
+                            catch (e: Exception) { null }
+                        }
+                        val rep = async {
+                            try { api.getReputacion("Bearer $token", reporte.usuario_creador_id) }
+                            catch (e: Exception) { null }
+                        }
+                        Pair(stats.await(), rep.await())
+                    }
                 } catch (e: Exception) {
                     Pair(null, null)
                 }
@@ -79,10 +87,14 @@ class ReportDetailViewModel(private val tokenManager: TokenManager) : ViewModel(
                     reputacion = reputacion,
                     isLoading = false
                 )
+            } catch (e: retrofit2.HttpException) {
+                android.util.Log.e("ReportDetailVM", "HTTP Error ${e.code()}: ${e.response()?.errorBody()?.string()}")
+                _state.value = _state.value.copy(isLoading = false, error = "Error al cargar el reporte (${e.code()})")
             } catch (e: Exception) {
                 android.util.Log.e("ReportDetailVM", "Error loadReporte: ${e.message}", e)
                 _state.value = _state.value.copy(isLoading = false, error = "Error al cargar el reporte")
             }
+
         }
     }
 
