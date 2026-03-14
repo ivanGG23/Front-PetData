@@ -52,7 +52,7 @@ fun ReportFormScreen(
         factory = ReportFormViewModel.Factory(tokenManager)
     )
     val formState by viewModel.formState.collectAsStateWithLifecycle()
-
+    
     // Form fields
     var estadoAnimalId by remember { mutableStateOf(1) }
     var estadoAnimalNombre by remember { mutableStateOf("Herido") }
@@ -302,10 +302,14 @@ fun ReportFormScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     val ubicacionObtenida = latitud != null
+                    var ubicacionCargando by remember { mutableStateOf(false) }
+                    var ubicacionError by remember { mutableStateOf(false) }
 
                     Button(
                         onClick = {
                             if (locationPermission.status.isGranted) {
+                                ubicacionCargando = true
+                                ubicacionError = false
                                 val client = LocationServices.getFusedLocationProviderClient(context)
                                 try {
                                     client.lastLocation.addOnSuccessListener { location ->
@@ -313,6 +317,7 @@ fun ReportFormScreen(
                                             latitud = location.latitude
                                             longitud = location.longitude
                                             precisionMetros = location.accuracy.toDouble()
+                                            ubicacionCargando = false
                                         } else {
                                             val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
                                                 com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
@@ -329,6 +334,10 @@ fun ReportFormScreen(
                                                         latitud = it.latitude
                                                         longitud = it.longitude
                                                         precisionMetros = it.accuracy.toDouble()
+                                                        ubicacionCargando = false
+                                                    } ?: run {
+                                                        ubicacionCargando = false
+                                                        ubicacionError = true
                                                     }
                                                     client.removeLocationUpdates(this)
                                                 }
@@ -340,33 +349,74 @@ fun ReportFormScreen(
                                                 android.os.Looper.getMainLooper()
                                             )
                                         }
+                                    }.addOnFailureListener {
+                                        ubicacionCargando = false
+                                        ubicacionError = true
                                     }
                                 } catch (e: SecurityException) {
-                                    android.util.Log.e("GPS", "Sin permiso: ${e.message}")
+                                    ubicacionCargando = false
+                                    ubicacionError = true
                                 }
                             } else {
                                 locationPermission.launchPermissionRequest()
                             }
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (ubicacionObtenida) Color(0xFFE8F5E9) else GreenPrimary,
-                            contentColor = if (ubicacionObtenida) GreenPrimary else White
+                            containerColor = when {
+                                ubicacionError -> Color(0xFFFFEBEE)
+                                ubicacionObtenida -> Color(0xFFE8F5E9)
+                                else -> GreenPrimary
+                            },
+                            contentColor = when {
+                                ubicacionError -> Color(0xFFE53935)
+                                ubicacionObtenida -> GreenPrimary
+                                else -> White
+                            }
                         )
                     ) {
-                        Icon(
-                            imageVector = if (ubicacionObtenida) Icons.Default.CheckCircle else Icons.Default.MyLocation,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        if (ubicacionCargando) {
+                            CircularProgressIndicator(
+                                color = GreenPrimary,
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Obteniendo ubicación...", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        } else {
+                            Icon(
+                                imageVector = when {
+                                    ubicacionError -> Icons.Default.LocationOff
+                                    ubicacionObtenida -> Icons.Default.CheckCircle
+                                    else -> Icons.Default.MyLocation
+                                },
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = when {
+                                    ubicacionError -> "No se pudo obtener — Reintentar"
+                                    ubicacionObtenida -> "✓ Ubicación obtenida"
+                                    else -> "Obtener ubicación actual"
+                                },
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    // Debug ubicación
+                    if (latitud != null) {
                         Text(
-                            text = if (ubicacionObtenida) "✓ Ubicación obtenida" else "Obtener ubicación actual",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold
+                            text = "📍 ${String.format("%.5f", latitud)}, ${String.format("%.5f", longitud)} (±${precisionMetros?.toInt()}m)",
+                            fontSize = 12.sp,
+                            color = GreenPrimary,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 6.dp)
                         )
                     }
 

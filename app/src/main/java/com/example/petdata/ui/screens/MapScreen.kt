@@ -89,30 +89,30 @@ fun MapScreen(
                     val data = mapState as MapState.Success
 
                     // Mapa OSMDroid
-                    AndroidView(
-                        factory = { ctx ->
-                            crearMapView(ctx)
-                        },
-                        update = { mapView ->
-                            mapView.overlays.clear()
-                            if (modoMapa == "marcadores") {
-                                agregarMarcadores(mapView, data.puntos, context)
-                            } else {
-                                agregarCalor(mapView, data.puntos)
-                            }
-                            // Centrar mapa en el primer punto si hay datos
-                            if (data.puntos.isNotEmpty()) {
-                                val centro = GeoPoint(
-                                    data.puntos.map { it.latitud }.average(),
-                                    data.puntos.map { it.longitud }.average()
-                                )
-                                mapView.controller.animateTo(centro)
-                                mapView.controller.setZoom(if (data.puntos.size == 1) 12.0 else 8.0)
-                            }
-                            mapView.invalidate()
-                        },
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    key(data.puntos.size, modoMapa) {
+                        AndroidView(
+                            factory = { ctx -> crearMapView(ctx) },
+                            update = { mapView ->
+                                mapView.overlays.clear()
+                                if (modoMapa == "marcadores") {
+                                    agregarMarcadores(mapView, data.puntos, context)
+                                } else {
+                                    agregarCalor(mapView, data.puntos)
+                                }
+                                if (data.puntos.isNotEmpty()) {
+                                    val centro = GeoPoint(
+                                        data.puntos.map { it.latitud }.average(),
+                                        data.puntos.map { it.longitud }.average()
+                                    )
+                                    mapView.controller.setZoom(13.0)  // ← más cercano
+                                    mapView.controller.setCenter(centro)  // ← setCenter en lugar de animateTo
+                                    mapView.invalidate()
+                                }
+                                mapView.invalidate()
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
 
                     // Botón para cambiar modo
                     FloatingActionButton(
