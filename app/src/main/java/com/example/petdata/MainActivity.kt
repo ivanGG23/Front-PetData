@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIntent(intent: Intent) {
         val data = intent.data ?: return
-        if (data.scheme != "patitasseguras" || data.host != "auth") return
+        if (data.scheme != "petdata" || data.host != "auth") return
 
         val token = data.getQueryParameter("token") ?: return
 
@@ -66,7 +66,8 @@ class MainActivity : ComponentActivity() {
                 apellido   = jwt.getClaim("apellido").asString() ?: "",
                 correo     = jwt.getClaim("correo").asString() ?: "",
                 rol_id     = jwt.getClaim("rol_id").asInt() ?: 1,
-                avatar_url = jwt.getClaim("avatar_url").asString()
+                avatar_url = jwt.getClaim("avatar_url").asString(),
+                auth_provider = "google"
             )
 
             // CAMBIO: envolver en lifecycleScope.launch

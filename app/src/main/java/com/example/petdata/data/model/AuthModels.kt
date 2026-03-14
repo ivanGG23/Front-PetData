@@ -19,7 +19,8 @@ data class UserData(
     val avatar_url: String?,
     val telefono: String? = null,
     val fecha_nacimiento: String? = null,
-    val auth_provider: String? = null
+    val auth_provider: String? = null,
+    val solicitud_rescatista: String? = null
 )
 
 data class RegisterRequest(

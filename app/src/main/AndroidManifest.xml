@@ -40,7 +40,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
-                    android:scheme="patitasseguras"
+                    android:scheme="petdata"
                     android:host="auth" />
             </intent-filter>
         </activity>

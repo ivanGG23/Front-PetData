@@ -45,6 +45,7 @@ fun PersonalInfoScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var showSnackbar by remember { mutableStateOf(false) }
     var snackbarMessage by remember { mutableStateOf("") }
+    var showDejarRescatistaDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Mostrar resultado de guardado
@@ -87,6 +88,34 @@ fun PersonalInfoScreen(
             },
             dismissButton = {
                 OutlinedButton(onClick = { showRescatistDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showDejarRescatistaDialog) {
+        AlertDialog(
+            onDismissRequest = { showDejarRescatistaDialog = false },
+            title = { Text("Dejar de ser Rescatista", fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "¿Estás seguro? Perderás acceso a las funciones de rescatista.",
+                    fontSize = 14.sp,
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDejarRescatistaDialog = false
+                        viewModel.dejarRescatista()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
+                ) { Text("Confirmar") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showDejarRescatistaDialog = false }) {
                     Text("Cancelar")
                 }
             }
@@ -306,7 +335,9 @@ fun PersonalInfoScreen(
                                         keyboardType = KeyboardType.Password
                                     ),
                                     trailingIcon = {
-                                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                        IconButton(onClick = {
+                                            passwordVisible = !passwordVisible
+                                        }) {
                                             Icon(
                                                 imageVector = if (passwordVisible)
                                                     Icons.Default.VisibilityOff
@@ -390,31 +421,55 @@ fun PersonalInfoScreen(
                     }
 
                     // ── Solicitar ser rescatista (solo ciudadanos) ─────────
-                    if (!state.isRescatista) {
-                        OutlinedButton(
-                            onClick = { showRescatistDialog = true },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(52.dp),
-                            shape = RoundedCornerShape(14.dp),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(
-                                // usa el color del tema
-                            ),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = GreenPrimary
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.VolunteerActivism,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Solicitar ser Rescatista",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Medium
-                            )
+                    when {
+                        state.isRescatista -> {
+                            OutlinedButton(
+                                onClick = { showDejarRescatistaDialog = true },
+                                modifier = Modifier.fillMaxWidth().height(52.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE53935))
+                            ) {
+                                Icon(Icons.Default.PersonRemove, null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Dejar de ser Rescatista", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                            }
+                        }
+                        state.solicitudRescatista == "pendiente" -> {
+                            OutlinedButton(
+                                onClick = {},
+                                enabled = false,
+                                modifier = Modifier.fillMaxWidth().height(52.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFFA000))
+                            ) {
+                                Icon(Icons.Default.HourglassEmpty, null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Solicitud pendiente de aprobación", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                            }
+                        }
+                        state.solicitudRescatista == "rechazada" -> {
+                            OutlinedButton(
+                                onClick = { showRescatistDialog = true },
+                                modifier = Modifier.fillMaxWidth().height(52.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE53935))
+                            ) {
+                                Icon(Icons.Default.Refresh, null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Solicitud rechazada — Reintentar", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                            }
+                        }
+                        else -> {
+                            OutlinedButton(
+                                onClick = { showRescatistDialog = true },
+                                modifier = Modifier.fillMaxWidth().height(52.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = GreenPrimary)
+                            ) {
+                                Icon(Icons.Default.VolunteerActivism, null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Solicitar ser Rescatista", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                            }
                         }
                     }
 

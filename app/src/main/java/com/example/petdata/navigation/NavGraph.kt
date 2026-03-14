@@ -14,6 +14,7 @@ import com.example.petdata.ui.screens.*
 import com.example.petdata.ui.viemodel.HomeViewModel
 import com.example.petdata.ui.viemodel.RegisterViewModel
 import com.example.petdata.ui.viewmodel.LoginViewModel
+import kotlinx.coroutines.flow.first
 
 sealed class Screen(val route: String) {
     object Login : Screen("login")
@@ -39,6 +40,20 @@ fun NavGraph(
     rolId: Int,
     onRolIdUpdated: (Int) -> Unit
 ) {
+
+    // Verificar sesión activa al arrancar
+    LaunchedEffect(Unit) {
+        val token = tokenManager.getValidToken()
+        if (token != null) {
+            val rolIdStr = tokenManager.rolId.first()
+            val rol = rolIdStr?.toIntOrNull() ?: 1
+            onRolIdUpdated(rol)
+            navController.navigate(Screen.Home.route) {
+                popUpTo(Screen.Login.route) { inclusive = true }
+            }
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = Screen.Login.route
@@ -76,7 +91,7 @@ fun NavGraph(
                 onGoogleSignIn = {
                     val intent = android.content.Intent(
                         android.content.Intent.ACTION_VIEW,
-                        android.net.Uri.parse("http://192.168.1.11:3000/auth/google")
+                        android.net.Uri.parse("https://api-gateway-z8qa.onrender.com/auth/google")
                     )
                     context.startActivity(intent)
                 }

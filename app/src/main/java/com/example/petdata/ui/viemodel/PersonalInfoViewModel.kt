@@ -16,17 +16,15 @@ sealed class PersonalInfoUiState {
     object Loading : PersonalInfoUiState()
 
     data class Success(
-        // Campos editables
         val nombre: String = "",
         val apellido: String = "",
         val telefono: String = "",
         val fechaNacimiento: String = "",
         val nuevaContrasena: String = "",
-        // Solo lectura
         val correo: String = "",
         val isGoogleUser: Boolean = false,
         val isRescatista: Boolean = false,
-        // Control de guardado
+        val solicitudRescatista: String? = null,
         val isSaving: Boolean = false
     ) : PersonalInfoUiState()
 
@@ -60,6 +58,7 @@ class PersonalInfoViewModel(private val tokenManager: TokenManager) : ViewModel(
                 val userId = userIdStr.toInt()
 
                 val user = RetrofitClient.apiService.getUserById(authHeader, userId)
+                val authProvider = tokenManager.getAuthProvider().first() ?: "local"
 
                 _uiState.value = PersonalInfoUiState.Success(
                     nombre          = user.nombre,
@@ -67,8 +66,9 @@ class PersonalInfoViewModel(private val tokenManager: TokenManager) : ViewModel(
                     telefono        = user.telefono ?: "",
                     fechaNacimiento = user.fecha_nacimiento ?: "",
                     correo          = user.correo,
-                    isGoogleUser    = user.auth_provider == "google",
-                    isRescatista    = user.rol_id == 2
+                    isGoogleUser    = authProvider == "google",
+                    isRescatista    = user.rol_id == 2,
+                    solicitudRescatista = user.solicitud_rescatista
                 )
             } catch (e: Exception) {
                 android.util.Log.e("PersonalInfoVM", "Error cargando: ${e.message}", e)
@@ -140,6 +140,22 @@ class PersonalInfoViewModel(private val tokenManager: TokenManager) : ViewModel(
             } catch (e: Exception) {
                 android.util.Log.e("PersonalInfoVM", "Error solicitud rescatista: ${e.message}", e)
                 _saveResult.value = "Error al enviar solicitud: ${e.message}"
+            }
+        }
+    }
+
+    fun dejarRescatista() {
+        viewModelScope.launch {
+            try {
+                val token = tokenManager.token.first() ?: return@launch
+                val authHeader = "Bearer $token"
+                val userIdStr = tokenManager.getUserId().first() ?: return@launch
+                val userId = userIdStr.toInt()
+
+                RetrofitClient.apiService.dejarRescatista(authHeader, userId)
+                _saveResult.value = "✓ Has dejado de ser rescatista."
+            } catch (e: Exception) {
+                _saveResult.value = "Error: ${e.message}"
             }
         }
     }
