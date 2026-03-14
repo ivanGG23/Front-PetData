@@ -462,41 +462,7 @@ fun RegisterScreen(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 // Rescuer checkbox
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFFFFF9E6))
-                        .border(1.dp, Color(0xFFFFE082), RoundedCornerShape(12.dp))
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Checkbox(
-                        checked = isRescuer,
-                        onCheckedChange = { isRescuer = it },
-                        colors = CheckboxDefaults.colors(checkedColor = Color(0xFFFFC107))
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("🛡️", fontSize = 16.sp)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Soy Rescatista",
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp,
-                                color = Color(0xFF795548)
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "Accede a funciones avanzadas para gestionar rescates y crear casos oficiales",
-                            fontSize = 12.sp,
-                            color = Color(0xFF795548).copy(alpha = 0.8f),
-                            lineHeight = 16.sp
-                        )
-                    }
-                }
+
 
                 Spacer(modifier = Modifier.height(24.dp))
 

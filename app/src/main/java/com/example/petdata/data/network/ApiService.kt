@@ -153,4 +153,10 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Path("id") id: Int
     )
+
+    @POST("auth/users/{id}/dejar-rescatista")
+    suspend fun dejarRescatista(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    )
 }
