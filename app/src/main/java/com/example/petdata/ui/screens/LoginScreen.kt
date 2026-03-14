@@ -78,7 +78,7 @@ fun LoginScreen(
                         .background(Color(0xFF4CAF50)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("❤️", fontSize = 48.sp)
+                    Text("🐾", fontSize = 48.sp)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -177,12 +177,7 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Text(
-                        text = "¿Olvidaste tu contraseña?",
-                        color = GreenPrimary,
-                        fontSize = 13.sp,
-                        modifier = Modifier.align(Alignment.End)
-                    )
+
 
                     Spacer(modifier = Modifier.height(16.dp))
 
