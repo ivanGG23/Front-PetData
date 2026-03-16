@@ -12,6 +12,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 data class ReportDetailState(
     val reporte: ReporteResponse? = null,
@@ -21,7 +24,7 @@ data class ReportDetailState(
     val userStats: UserStats? = null,
     val reputacion: ReputacionResponse? = null,
     val isLoading: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
 )
 
 sealed class ComentarioState {
@@ -48,7 +51,6 @@ class ReportDetailViewModel(private val tokenManager: TokenManager) : ViewModel(
 
     private val _accionState = MutableStateFlow<AccionState>(AccionState.Idle)
     val accionState: StateFlow<AccionState> = _accionState
-
     fun loadReporte(reporteId: Int) {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
@@ -58,8 +60,11 @@ class ReportDetailViewModel(private val tokenManager: TokenManager) : ViewModel(
 
                 val reporte = api.getReportById("Bearer $token", reporteId)
                 val historial = api.getHistorial("Bearer $token", reporteId)
-                val evidencias = api.getEvidencias("Bearer $token", reporteId)
+                //val evidencias = api.getEvidencias("Bearer $token", reporteId)
                 val comentarios = api.getComentarios("Bearer $token", reporteId)
+
+                val evidencias = api.getEvidencias("Bearer $token", reporteId)
+                android.util.Log.d("ReportDetailVM", "Evidencias: ${evidencias.size} — $evidencias")
 
                 // Llamadas paralelas para stats y reputación del creador
                 val (userStats, reputacion) = try {
@@ -217,6 +222,79 @@ class ReportDetailViewModel(private val tokenManager: TokenManager) : ViewModel(
                 _accionState.value = AccionState.Error(mensaje)
             } catch (e: Exception) {
                 android.util.Log.e("ReportDetailVM", "Error cambiarEstado: ${e.message}", e)
+                _accionState.value = AccionState.Error("No se pudo cambiar el estado")
+            }
+        }
+    }
+
+    fun cambiarEstadoConImagen(
+        context: android.content.Context,
+        reporteId: Int,
+        nuevoEstadoId: Int,
+        comentario: String? = null,
+        imageUri: android.net.Uri? = null
+    ) {
+        viewModelScope.launch {
+            _accionState.value = AccionState.Loading
+            try {
+                val token = tokenManager.token.first() ?: ""
+                val api = RetrofitClient.apiServiceWithToken(token)
+
+                // Subir imagen si existe
+                val urlImgs: List<String>? = if (imageUri != null) {
+                    val inputStream = context.contentResolver.openInputStream(imageUri)
+                        ?: throw Exception("No se pudo leer la imagen")
+                    val bytes = inputStream.readBytes()
+                    inputStream.close()
+
+                    if (bytes.isEmpty()) throw Exception("La imagen está vacía")
+
+                    val tempFile = java.io.File(context.cacheDir, "cierre_temp.jpg")
+                    tempFile.writeBytes(bytes)
+
+                    val imagenPart = okhttp3.MultipartBody.Part.createFormData(
+                        "imagenes",
+                        tempFile.name,
+                        tempFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
+                    )
+
+                    val reporte_id = reporteId.toString()
+                        .toRequestBody("text/plain".toMediaTypeOrNull())
+
+                    val tipo = "cierre"
+                        .toRequestBody("text/plain".toMediaTypeOrNull())
+
+                    val result = api.addEvidencia(
+                        token = "Bearer $token",
+                        reporte_id = reporte_id,
+                        tipo = tipo,
+                        imagen = imagenPart
+                    )
+
+                    tempFile.delete()
+                    result.urls
+                } else null
+
+                // Cambiar estado con las URLs
+                api.cambiarEstado(
+                    "Bearer $token",
+                    reporteId,
+                    CambiarEstadoRequest(
+                        nuevo_estado_id = nuevoEstadoId,
+                        comentario = comentario,
+                        url_imgs = urlImgs
+                    )
+                )
+                loadReporte(reporteId)
+                _accionState.value = AccionState.Success
+            } catch (e: retrofit2.HttpException) {
+                val errorBody = e.response()?.errorBody()?.string()
+                val mensaje = try {
+                    org.json.JSONObject(errorBody ?: "").getString("error")
+                } catch (ex: Exception) { "No se pudo cambiar el estado" }
+                _accionState.value = AccionState.Error(mensaje)
+            } catch (e: Exception) {
+                android.util.Log.e("ReportDetailVM", "Error: ${e.message}", e)
                 _accionState.value = AccionState.Error("No se pudo cambiar el estado")
             }
         }

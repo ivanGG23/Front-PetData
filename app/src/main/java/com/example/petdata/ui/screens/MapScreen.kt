@@ -42,6 +42,8 @@ import org.osmdroid.views.overlay.Overlay
 fun MapScreen(
     rolId: Int = 1,
     tokenManager: TokenManager,
+    focusLat: Double? = null,
+    focusLng: Double? = null,
     onNavigate: (route: String) -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -89,7 +91,7 @@ fun MapScreen(
                     val data = mapState as MapState.Success
 
                     // Mapa OSMDroid
-                    key(data.puntos.size, modoMapa) {
+                    key(data.puntos.size, modoMapa, focusLat, focusLng) {
                         AndroidView(
                             factory = { ctx -> crearMapView(ctx) },
                             update = { mapView ->
@@ -99,14 +101,25 @@ fun MapScreen(
                                 } else {
                                     agregarCalor(mapView, data.puntos)
                                 }
-                                if (data.puntos.isNotEmpty()) {
+
+                                // Si viene con coordenadas específicas, enfocar ahí
+                                if (focusLat != null && focusLng != null) {
+                                    mapView.controller.setZoom(17.0)
+                                    mapView.controller.setCenter(GeoPoint(focusLat, focusLng))
+                                    // Agregar marcador especial para el reporte enfocado
+                                    val marker = Marker(mapView).apply {
+                                        position = GeoPoint(focusLat, focusLng)
+                                        title = "Ubicación del reporte"
+                                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                    }
+                                    mapView.overlays.add(marker)
+                                } else if (data.puntos.isNotEmpty()) {
                                     val centro = GeoPoint(
                                         data.puntos.map { it.latitud }.average(),
                                         data.puntos.map { it.longitud }.average()
                                     )
-                                    mapView.controller.setZoom(13.0)  // ← más cercano
-                                    mapView.controller.setCenter(centro)  // ← setCenter en lugar de animateTo
-                                    mapView.invalidate()
+                                    mapView.controller.setZoom(13.0)
+                                    mapView.controller.setCenter(centro)
                                 }
                                 mapView.invalidate()
                             },

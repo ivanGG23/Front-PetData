@@ -76,7 +76,9 @@ data class ReporteResponse(
     val tipoAnimal: TipoAnimal,
     val creador: UsuarioResumen?,
     val rescatista: UsuarioResumen?,
-    val imagen_url: String?
+    val imagen_url: String?,
+    val locacion: Locacion?,
+    val direccion: Direccion?
 )
 
 data class HistorialEstado(
@@ -178,4 +180,33 @@ data class ZonaStat(
     val zona: String,
     val total: Int,
     val resueltos: Int
+)
+
+data class AddEvidenciaResponse(
+    val message: String,
+    val reporte_id: Int,
+    val imagenes_subidas: Int,
+    val urls: List<String>
+)
+
+data class Locacion(
+    val id: Int,
+    val reporte_id: Int,
+    val latitud: Double,
+    val longitud: Double,
+    val precision_metros: Double?,
+    val fecha_subido: String
+)
+
+data class Direccion(
+    val id: Int,
+    val reporte_id: Int,
+    val pais: String?,
+    val estado: String?,
+    val ciudad: String?,
+    val municipio: String?,
+    val colonia: String?,
+    val barrio: String?,
+    val display_name: String?,
+    val fecha_subido: String
 )
