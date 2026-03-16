@@ -87,7 +87,7 @@ fun MapScreen(
                         Text((mapState as MapState.Error).message, color = Color.Red)
                     }
                 }
-                is MapState.Success -> {
+                    is MapState.Success -> {
                     val data = mapState as MapState.Success
 
                     // Mapa OSMDroid
@@ -97,7 +97,7 @@ fun MapScreen(
                             update = { mapView ->
                                 mapView.overlays.clear()
                                 if (modoMapa == "marcadores") {
-                                    agregarMarcadores(mapView, data.puntos, context)
+                                    agregarMarcadores(mapView, data.puntos, context, onNavigate)
                                 } else {
                                     agregarCalor(mapView, data.puntos)
                                 }
@@ -187,7 +187,12 @@ private fun crearMapView(context: Context): MapView {
     return mapView
 }
 
-private fun agregarMarcadores(mapView: MapView, puntos: List<HeatmapPoint>, context: Context) {
+private fun agregarMarcadores(
+    mapView: MapView,
+    puntos: List<HeatmapPoint>,
+    context: Context,
+    onNavigate: (String) -> Unit  // ← nuevo
+) {
     puntos.forEach { punto ->
         val marker = Marker(mapView)
         marker.position = GeoPoint(punto.latitud, punto.longitud)
@@ -199,8 +204,18 @@ private fun agregarMarcadores(mapView: MapView, puntos: List<HeatmapPoint>, cont
                 2 -> "Media"
                 else -> "Baja"
             }
-        }"
+        } — Toca para ver detalles"
         marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+        marker.setOnMarkerClickListener { clickedMarker, _ ->
+            if (clickedMarker.isInfoWindowShown) {
+                onNavigate("report_detail/${punto.reporte_id}")
+                true
+            } else {
+                clickedMarker.showInfoWindow()
+                true
+            }
+        }
+
         mapView.overlays.add(marker)
     }
 }

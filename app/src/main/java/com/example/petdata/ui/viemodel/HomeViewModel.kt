@@ -3,6 +3,7 @@ package com.example.petdata.ui.viemodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.petdata.data.AppEvents
 import com.example.petdata.data.local.TokenManager
 import com.example.petdata.data.model.GlobalStats
 import com.example.petdata.data.model.ReporteResponse
@@ -40,6 +41,13 @@ class HomeViewModel(private val tokenManager: TokenManager) : ViewModel() {
     init {
         loadReportes()
         loadGlobalStats()
+        // Recargar solo cuando otra pantalla notifique un cambio
+        viewModelScope.launch {
+            AppEvents.reporteModificado.collect {
+                loadReportes()
+                loadGlobalStats()
+            }
+        }
     }
 
     fun loadGlobalStats() {
@@ -76,7 +84,6 @@ class HomeViewModel(private val tokenManager: TokenManager) : ViewModel() {
             try {
                 val token = tokenManager.token.first() ?: ""
 
-                // Calcular fechas según el filtro seleccionado
                 val formatter = DateTimeFormatter.ISO_LOCAL_DATE
                 val hoy = LocalDate.now()
                 val (fechaInicio, fechaFin) = when (_filtroFecha.value) {
@@ -89,14 +96,23 @@ class HomeViewModel(private val tokenManager: TokenManager) : ViewModel() {
                 val reportes = RetrofitClient
                     .apiServiceWithToken(token)
                     .getReports(
-                        token          = "Bearer $token",
-                        tipoAnimalId   = _filtroTipo.value,
-                        estadoId       = _filtroEstado.value,
-                        prioridadId    = _filtroPrioridad.value,
-                        fechaInicio    = fechaInicio,
-                        fechaFin       = fechaFin
+                        token        = "Bearer $token",
+                        tipoAnimalId = _filtroTipo.value,
+                        estadoId     = _filtroEstado.value,
+                        prioridadId  = _filtroPrioridad.value,
+                        fechaInicio  = fechaInicio,
+                        fechaFin     = fechaFin
                     )
-                _homeState.value = HomeState.Success(reportes)
+
+                // Ocultar resueltos (estado 4) y falsos (estado 5)
+                // a menos que el usuario haya filtrado explícitamente por ese estado
+                val filtrados = if (_filtroEstado.value == null) {
+                    reportes.filter { it.estado_reporte_actual != 4 && it.estado_reporte_actual != 5 }
+                } else {
+                    reportes
+                }
+
+                _homeState.value = HomeState.Success(filtrados)
             } catch (e: Exception) {
                 android.util.Log.e("HomeViewModel", "Error: ${e.message}")
                 _homeState.value = HomeState.Error("Error al cargar los reportes")

@@ -53,6 +53,51 @@ fun RegisterScreen(
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
 
+    var nameError by remember { mutableStateOf<String?>(null) }
+    var lastNameError by remember { mutableStateOf<String?>(null) }
+    var emailError by remember { mutableStateOf<String?>(null) }
+    var passwordError by remember { mutableStateOf<String?>(null) }
+    var confirmPasswordError by remember { mutableStateOf<String?>(null) }
+
+    fun validar(): Boolean {
+        var valido = true
+        val emailTrimmed = email.trim()
+
+        nameError = if (name.isBlank()) { valido = false; "El nombre es requerido" } else null
+        lastNameError = if (lastName.isBlank()) { valido = false; "El apellido es requerido" } else null
+        emailError = when {
+            emailTrimmed.isBlank() -> { valido = false; "El correo es requerido" }
+            !android.util.Patterns.EMAIL_ADDRESS.matcher(emailTrimmed).matches() -> {
+                valido = false; "Ingresa un correo válido"
+            }
+            !emailTrimmed.contains("@") || emailTrimmed.substringAfterLast(".").length < 2 -> {
+                valido = false; "Ingresa un correo válido"
+            }
+            else -> {
+                val dominiosPermitidos = listOf(
+                    "gmail.com", "hotmail.com", "outlook.com",
+                    "yahoo.com", "icloud.com", "live.com",
+                    "hotmail.es", "outlook.es", "yahoo.es"
+                )
+                val dominio = emailTrimmed.substringAfter("@").lowercase()
+                if (dominiosPermitidos.none { emailTrimmed.lowercase().endsWith("@$it") }) {
+                    valido = false; "Solo se permiten correos de Gmail, Hotmail, Outlook, Yahoo o iCloud"
+                } else null
+            }
+        }
+        passwordError = when {
+            password.isBlank() -> { valido = false; "La contraseña es requerida" }
+            password.length < 8 -> { valido = false; "Mínimo 8 caracteres" }
+            else -> null
+        }
+        confirmPasswordError = when {
+            confirmPassword.isBlank() -> { valido = false; "Confirma tu contraseña" }
+            confirmPassword != password -> { valido = false; "Las contraseñas no coinciden" }
+            else -> null
+        }
+        return valido
+    }
+
     LaunchedEffect(registerState) {
         when (registerState) {
             is RegisterState.Success -> {
@@ -67,23 +112,18 @@ fun RegisterScreen(
         }
     }
 
-    // DatePicker state
     val datePickerState = rememberDatePickerState()
     if (showDatePicker) {
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                            birthDate = sdf.format(Date(millis))
-                        }
-                        showDatePicker = false
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                        birthDate = sdf.format(Date(millis))
                     }
-                ) {
-                    Text("Aceptar", color = GreenPrimary)
-                }
+                    showDatePicker = false
+                }) { Text("Aceptar", color = GreenPrimary) }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) {
@@ -101,81 +141,47 @@ fun RegisterScreen(
         }
     }
 
-    // Dialog cuenta creada (ciudadano)
     if (showSuccessDialog) {
         AlertDialog(
             onDismissRequest = {},
             icon = { Text("✅", fontSize = 32.sp) },
-            title = {
-                Text(
-                    text = "¡Cuenta creada!",
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Text("Tu cuenta ha sido creada exitosamente. Ya puedes iniciar sesión.")
-            },
+            title = { Text("¡Cuenta creada!", fontWeight = FontWeight.Bold) },
+            text = { Text("Tu cuenta ha sido creada exitosamente. Ya puedes iniciar sesión.") },
             confirmButton = {
                 Button(
-                    onClick = {
-                        showSuccessDialog = false
-                        onNavigateToLogin()
-                    },
+                    onClick = { showSuccessDialog = false; onNavigateToLogin() },
                     colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
-                ) {
-                    Text("Iniciar Sesión")
-                }
+                ) { Text("Iniciar Sesión") }
             }
         )
     }
 
-    // Dialog cuenta pendiente (rescatista)
     if (showPendingDialog) {
         AlertDialog(
             onDismissRequest = {},
             icon = { Text("⏳", fontSize = 32.sp) },
-            title = {
-                Text(
-                    text = "Solicitud enviada",
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Text("Tu solicitud como rescatista está siendo revisada. Te notificaremos cuando sea aprobada.")
-            },
+            title = { Text("Solicitud enviada", fontWeight = FontWeight.Bold) },
+            text = { Text("Tu solicitud como rescatista está siendo revisada. Te notificaremos cuando sea aprobada.") },
             confirmButton = {
                 Button(
-                    onClick = {
-                        showPendingDialog = false
-                        onNavigateToLogin()
-                    },
+                    onClick = { showPendingDialog = false; onNavigateToLogin() },
                     colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
-                ) {
-                    Text("Entendido")
-                }
+                ) { Text("Entendido") }
             }
         )
     }
 
-    // Dialog error
     if (showErrorDialog) {
         AlertDialog(
             onDismissRequest = { showErrorDialog = false },
             icon = { Text("❌", fontSize = 32.sp) },
-            title = {
-                Text(
-                    text = "Error al registrarse",
-                    fontWeight = FontWeight.Bold
-                )
-            },
+            title = { Text("Error al registrarse", fontWeight = FontWeight.Bold) },
             text = { Text(errorMessage) },
             confirmButton = {
                 Button(
                     onClick = { showErrorDialog = false },
                     colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
-                ) {
-                    Text("Intentar de nuevo")
-                }
+                ) { Text("Intentar de nuevo") }
             }
         )
     }
@@ -183,13 +189,8 @@ fun RegisterScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(GreenPrimary, Color(0xFFE8F5E9))
-                )
-            )
+            .background(Brush.verticalGradient(colors = listOf(GreenPrimary, Color(0xFFE8F5E9))))
     ) {
-        // Header
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -202,31 +203,14 @@ fun RegisterScreen(
                     .clip(RoundedCornerShape(20.dp))
                     .background(Color(0xFF4CAF50)),
                 contentAlignment = Alignment.Center
-            ) {
-                Text("❤️", fontSize = 40.sp)
-            }
-
+            ) { Text("❤️", fontSize = 40.sp) }
             Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = "RescateAnimal",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = White
-            )
-
-            Text(
-                text = "Únete a nuestra comunidad",
-                fontSize = 13.sp,
-                color = White.copy(alpha = 0.9f)
-            )
+            Text("RescateAnimal", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = White)
+            Text("Únete a nuestra comunidad", fontSize = 13.sp, color = White.copy(alpha = 0.9f))
         }
 
-        // Form card
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
+            modifier = Modifier.fillMaxWidth().weight(1f),
             shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
             colors = CardDefaults.cardColors(containerColor = White)
         ) {
@@ -236,85 +220,77 @@ fun RegisterScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(24.dp)
             ) {
+                Text("Crear Cuenta", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                 Text(
-                    text = "Crear Cuenta",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-
-                Text(
-                    text = "Regístrate para empezar a ayudar",
+                    "Regístrate para empezar a ayudar",
                     fontSize = 13.sp,
                     color = TextSecondary,
                     modifier = Modifier.padding(bottom = 24.dp)
                 )
 
-                // Nombre
-                Text(
-                    text = "Nombre",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = TextPrimary,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                // ── Nombre ──
+                Text("Nombre *", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary,
+                    modifier = Modifier.padding(bottom = 8.dp))
                 OutlinedTextField(
                     value = name,
-                    onValueChange = { name = it },
-                    placeholder = { Text("Juan", fontSize = 14.sp) },
+                    onValueChange = { name = it; if (nameError != null) nameError = null },
+                    placeholder = { Text("Ej. Juan", fontSize = 14.sp) },
                     leadingIcon = {
-                        Icon(Icons.Default.Person, contentDescription = null, tint = TextSecondary)
+                        Icon(Icons.Default.Person, null,
+                            tint = if (nameError != null) Color.Red else TextSecondary)
+                    },
+                    isError = nameError != null,
+                    supportingText = {
+                        if (nameError != null) Text(nameError!!, color = Color.Red, fontSize = 12.sp)
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedBorderColor = Color(0xFFE0E0E0),
-                        focusedBorderColor = GreenPrimary
+                        focusedBorderColor = GreenPrimary,
+                        errorBorderColor = Color.Red
                     )
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Apellido
-                Text(
-                    text = "Apellido",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = TextPrimary,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                // ── Apellido ──
+                Text("Apellido *", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary,
+                    modifier = Modifier.padding(bottom = 8.dp))
                 OutlinedTextField(
                     value = lastName,
-                    onValueChange = { lastName = it },
-                    placeholder = { Text("Pérez", fontSize = 14.sp) },
+                    onValueChange = { lastName = it; if (lastNameError != null) lastNameError = null },
+                    placeholder = { Text("Ej. Pérez", fontSize = 14.sp) },
                     leadingIcon = {
-                        Icon(Icons.Default.Person, contentDescription = null, tint = TextSecondary)
+                        Icon(Icons.Default.Person, null,
+                            tint = if (lastNameError != null) Color.Red else TextSecondary)
+                    },
+                    isError = lastNameError != null,
+                    supportingText = {
+                        if (lastNameError != null) Text(lastNameError!!, color = Color.Red, fontSize = 12.sp)
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedBorderColor = Color(0xFFE0E0E0),
-                        focusedBorderColor = GreenPrimary
+                        focusedBorderColor = GreenPrimary,
+                        errorBorderColor = Color.Red
                     )
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Teléfono
-                Text(
-                    text = "Teléfono (opcional)",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = TextPrimary,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                // ── Teléfono (opcional) ──
+                Text("Teléfono (opcional)", fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                    color = TextPrimary, modifier = Modifier.padding(bottom = 8.dp))
                 OutlinedTextField(
                     value = phone,
-                    onValueChange = { phone = it },
-                    placeholder = { Text("9671234567", fontSize = 14.sp) },
-                    leadingIcon = {
-                        Icon(Icons.Default.Phone, contentDescription = null, tint = TextSecondary)
-                    },
+                    onValueChange = { if (it.all { c -> c.isDigit() }) phone = it },
+                    placeholder = { Text("Ej. 9671234567", fontSize = 14.sp) },
+                    leadingIcon = { Icon(Icons.Default.Phone, null, tint = TextSecondary) },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                    ),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -325,32 +301,23 @@ fun RegisterScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Fecha de nacimiento
-                Text(
-                    text = "Fecha de nacimiento (opcional)",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = TextPrimary,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                // ── Fecha de nacimiento (opcional) ──
+                Text("Fecha de nacimiento (opcional)", fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                    color = TextPrimary, modifier = Modifier.padding(bottom = 8.dp))
                 OutlinedTextField(
                     value = birthDate,
                     onValueChange = {},
                     readOnly = true,
                     placeholder = { Text("Seleccionar fecha", fontSize = 14.sp) },
-                    leadingIcon = {
-                        Icon(Icons.Default.DateRange, contentDescription = null, tint = TextSecondary)
-                    },
+                    leadingIcon = { Icon(Icons.Default.DateRange, null, tint = TextSecondary) },
                     trailingIcon = {
                         if (birthDate.isNotEmpty()) {
                             IconButton(onClick = { birthDate = "" }) {
-                                Icon(Icons.Default.Close, contentDescription = "Limpiar", tint = TextSecondary)
+                                Icon(Icons.Default.Close, null, tint = TextSecondary)
                             }
                         }
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showDatePicker = true },
+                    modifier = Modifier.fillMaxWidth().clickable { showDatePicker = true },
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedBorderColor = Color(0xFFE0E0E0),
@@ -366,134 +333,114 @@ fun RegisterScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Email
-                Text(
-                    text = "Correo Electrónico",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = TextPrimary,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                // ── Correo ──
+                Text("Correo Electrónico *", fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                    color = TextPrimary, modifier = Modifier.padding(bottom = 8.dp))
                 OutlinedTextField(
                     value = email,
-                    onValueChange = { email = it },
-                    placeholder = { Text("tu@email.com", fontSize = 14.sp) },
+                    onValueChange = { email = it; if (emailError != null) emailError = null },
+                    placeholder = { Text("Ej. correo@gmail.com", fontSize = 14.sp) },
                     leadingIcon = {
-                        Icon(Icons.Default.Email, contentDescription = null, tint = TextSecondary)
+                        Icon(Icons.Default.Email, null,
+                            tint = if (emailError != null) Color.Red else TextSecondary)
+                    },
+                    isError = emailError != null,
+                    supportingText = {
+                        if (emailError != null) Text(emailError!!, color = Color.Red, fontSize = 12.sp)
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedBorderColor = Color(0xFFE0E0E0),
-                        focusedBorderColor = GreenPrimary
+                        focusedBorderColor = GreenPrimary,
+                        errorBorderColor = Color.Red
                     )
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Contraseña
-                Text(
-                    text = "Contraseña",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = TextPrimary,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                // ── Contraseña ──
+                Text("Contraseña *", fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                    color = TextPrimary, modifier = Modifier.padding(bottom = 8.dp))
                 OutlinedTextField(
                     value = password,
-                    onValueChange = { password = it },
-                    placeholder = { Text("••••••••", fontSize = 14.sp) },
+                    onValueChange = { password = it; if (passwordError != null) passwordError = null },
+                    placeholder = { Text("Mínimo 8 caracteres", fontSize = 14.sp) },
                     leadingIcon = {
-                        Icon(Icons.Default.Lock, contentDescription = null, tint = TextSecondary)
+                        Icon(Icons.Default.Lock, null,
+                            tint = if (passwordError != null) Color.Red else TextSecondary)
                     },
                     trailingIcon = {
                         IconButton(onClick = { passwordVisible = !passwordVisible }) {
                             Icon(
                                 if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                contentDescription = null,
-                                tint = TextSecondary
+                                null, tint = TextSecondary
                             )
                         }
                     },
-                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    visualTransformation = if (passwordVisible) VisualTransformation.None
+                    else PasswordVisualTransformation(),
+                    isError = passwordError != null,
+                    supportingText = {
+                        if (passwordError != null) Text(passwordError!!, color = Color.Red, fontSize = 12.sp)
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedBorderColor = Color(0xFFE0E0E0),
-                        focusedBorderColor = GreenPrimary
+                        focusedBorderColor = GreenPrimary,
+                        errorBorderColor = Color.Red
                     )
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Confirmar Contraseña
-                Text(
-                    text = "Confirmar Contraseña",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = TextPrimary,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                // ── Confirmar contraseña ──
+                Text("Confirmar Contraseña *", fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                    color = TextPrimary, modifier = Modifier.padding(bottom = 8.dp))
                 OutlinedTextField(
                     value = confirmPassword,
-                    onValueChange = { confirmPassword = it },
-                    placeholder = { Text("••••••••", fontSize = 14.sp) },
+                    onValueChange = { confirmPassword = it; if (confirmPasswordError != null) confirmPasswordError = null },
+                    placeholder = { Text("Repite tu contraseña", fontSize = 14.sp) },
                     leadingIcon = {
-                        Icon(Icons.Default.Lock, contentDescription = null, tint = TextSecondary)
+                        Icon(Icons.Default.Lock, null,
+                            tint = if (confirmPasswordError != null) Color.Red else TextSecondary)
                     },
                     trailingIcon = {
                         IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
                             Icon(
                                 if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                contentDescription = null,
-                                tint = TextSecondary
+                                null, tint = TextSecondary
                             )
                         }
                     },
-                    visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    visualTransformation = if (confirmPasswordVisible) VisualTransformation.None
+                    else PasswordVisualTransformation(),
+                    isError = confirmPasswordError != null,
+                    supportingText = {
+                        if (confirmPasswordError != null) Text(confirmPasswordError!!, color = Color.Red, fontSize = 12.sp)
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedBorderColor = Color(0xFFE0E0E0),
-                        focusedBorderColor = GreenPrimary
+                        focusedBorderColor = GreenPrimary,
+                        errorBorderColor = Color.Red
                     )
                 )
 
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Rescuer checkbox
-
-
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Validación de contraseñas
-                val passwordsMatch = password == confirmPassword
-                if (confirmPassword.isNotEmpty() && !passwordsMatch) {
-                    Text(
-                        text = "Las contraseñas no coinciden",
-                        color = Color.Red,
-                        fontSize = 13.sp,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                }
-
-                // Loading state
                 if (registerState is RegisterState.Loading) {
                     LinearProgressIndicator(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                         color = GreenPrimary
                     )
                 }
 
-                // Botón crear cuenta
                 Button(
                     onClick = {
-                        if (name.isNotEmpty() && lastName.isNotEmpty() &&
-                            email.isNotEmpty() && password.isNotEmpty() &&
-                            passwordsMatch
-                        ) {
+                        if (validar()) {
                             viewModel.register(
                                 nombre = name,
                                 apellido = lastName,
@@ -506,29 +453,19 @@ fun RegisterScreen(
                         }
                     },
                     enabled = registerState !is RegisterState.Loading,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text(
-                        text = "Crear Cuenta",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Text("Crear Cuenta", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Row(modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                    Text("¿Ya tienes cuenta? ", fontSize = 14.sp, color = TextSecondary)
                     Text(
-                        text = "¿Ya tienes cuenta? ",
-                        fontSize = 14.sp,
-                        color = TextSecondary
-                    )
-                    Text(
-                        text = "Inicia sesión aquí",
+                        "Inicia sesión aquí",
                         fontSize = 14.sp,
                         color = GreenPrimary,
                         fontWeight = FontWeight.SemiBold,

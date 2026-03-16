@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.petdata.data.AppEvents
 import com.example.petdata.data.local.TokenManager
 import com.example.petdata.data.model.TipoAnimal
 import com.example.petdata.data.network.RetrofitClient
@@ -81,6 +82,7 @@ class ReportFormViewModel(private val tokenManager: TokenManager) : ViewModel() 
 
                 tempFile.delete()
                 _formState.value = ReportFormState.Success(result.reporte_id)
+                AppEvents.notificarReporteModificado()
 
             } catch (e: retrofit2.HttpException) {
                 val errorBody = e.response()?.errorBody()?.string()
