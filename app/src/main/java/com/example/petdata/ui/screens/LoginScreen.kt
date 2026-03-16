@@ -39,9 +39,27 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var emailError by remember { mutableStateOf<String?>(null) }
+    var passwordError by remember { mutableStateOf<String?>(null) }
 
     val loginState by viewModel.loginState.collectAsStateWithLifecycle()
     val googleRolId by MainActivity.googleAuthResult.collectAsStateWithLifecycle()
+
+    fun validar(): Boolean {
+        var valido = true
+        val emailTrimmed = email.trim()
+        val passwordTrimmed = password.trim()
+
+        emailError = when {
+            emailTrimmed.isBlank() -> { valido = false; "El correo es requerido" }
+            !android.util.Patterns.EMAIL_ADDRESS.matcher(emailTrimmed).matches() -> {
+                valido = false; "Ingresa un correo válido"
+            }
+            else -> null
+        }
+        passwordError = if (passwordTrimmed.isBlank()) { valido = false; "La contraseña es requerida" } else null
+        return valido
+    }
 
     LaunchedEffect(loginState) {
         if (loginState is LoginState.Success) {
@@ -125,16 +143,22 @@ fun LoginScreen(
                     )
                     OutlinedTextField(
                         value = email,
-                        onValueChange = { email = it },
-                        placeholder = { Text("tu@email.com", fontSize = 14.sp) },
+                        onValueChange = { email = it; if (emailError != null) emailError = null },
+                        placeholder = { Text("Ej. correo@gmail.com", fontSize = 14.sp) },
                         leadingIcon = {
-                            Icon(Icons.Default.Email, contentDescription = null, tint = TextSecondary)
+                            Icon(Icons.Default.Email, null,
+                                tint = if (emailError != null) Color.Red else TextSecondary)
+                        },
+                        isError = emailError != null,
+                        supportingText = {
+                            if (emailError != null) Text(emailError!!, color = Color.Red, fontSize = 12.sp)
                         },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedBorderColor = Color(0xFFE0E0E0),
-                            focusedBorderColor = GreenPrimary
+                            focusedBorderColor = GreenPrimary,
+                            errorBorderColor = Color.Red
                         )
                     )
 
@@ -150,28 +174,32 @@ fun LoginScreen(
                     )
                     OutlinedTextField(
                         value = password,
-                        onValueChange = { password = it },
-                        placeholder = { Text("••••••••", fontSize = 14.sp) },
+                        onValueChange = { password = it; if (passwordError != null) passwordError = null },
+                        placeholder = { Text("Tu contraseña", fontSize = 14.sp) },
                         leadingIcon = {
-                            Icon(Icons.Default.Lock, contentDescription = null, tint = TextSecondary)
+                            Icon(Icons.Default.Lock, null,
+                                tint = if (passwordError != null) Color.Red else TextSecondary)
                         },
                         trailingIcon = {
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Icon(
-                                    if (passwordVisible) Icons.Default.Visibility
-                                    else Icons.Default.VisibilityOff,
-                                    contentDescription = null,
-                                    tint = TextSecondary
+                                    if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    null, tint = TextSecondary
                                 )
                             }
                         },
                         visualTransformation = if (passwordVisible) VisualTransformation.None
                         else PasswordVisualTransformation(),
+                        isError = passwordError != null,
+                        supportingText = {
+                            if (passwordError != null) Text(passwordError!!, color = Color.Red, fontSize = 12.sp)
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedBorderColor = Color(0xFFE0E0E0),
-                            focusedBorderColor = GreenPrimary
+                            focusedBorderColor = GreenPrimary,
+                            errorBorderColor = Color.Red
                         )
                     )
 
@@ -196,7 +224,7 @@ fun LoginScreen(
                     // Botón login
                     Button(
                         onClick = {
-                            if (email.isNotEmpty() && password.isNotEmpty()) {
+                            if (validar()) {
                                 viewModel.login(email.trim(), password.trim())
                             }
                         },

@@ -407,18 +407,7 @@ fun ReportFormScreen(
                         }
                     }
 
-                    // Debug ubicación
-                    if (latitud != null) {
-                        Text(
-                            text = "📍 ${String.format("%.5f", latitud)}, ${String.format("%.5f", longitud)} (±${precisionMetros?.toInt()}m)",
-                            fontSize = 12.sp,
-                            color = GreenPrimary,
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 6.dp)
-                        )
-                    }
+
 
                     Spacer(modifier = Modifier.height(16.dp))
 

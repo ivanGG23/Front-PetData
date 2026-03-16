@@ -130,7 +130,11 @@ fun NavGraph(
                     navController.navigate(Screen.ReportDetail.createRoute(id))
                 },
                 onNavigate = { route ->
-                    navController.navigate(route)
+                    navController.navigate(route) {
+                        popUpTo(Screen.Home.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
             )
         }

@@ -3,6 +3,7 @@ package com.example.petdata.ui.viemodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.petdata.data.AppEvents
 import com.example.petdata.data.local.TokenManager
 import com.example.petdata.data.model.*
 import com.example.petdata.data.network.RetrofitClient
@@ -148,6 +149,7 @@ class ReportDetailViewModel(private val tokenManager: TokenManager) : ViewModel(
                     .asignarReporte("Bearer $token", reporteId, emptyMap())
                 loadReporte(reporteId)
                 _accionState.value = AccionState.Success
+                AppEvents.notificarReporteModificado()
             } catch (e: retrofit2.HttpException) {
                 // Extraer el mensaje real que manda el backend
                 val errorBody = e.response()?.errorBody()?.string()
@@ -174,6 +176,7 @@ class ReportDetailViewModel(private val tokenManager: TokenManager) : ViewModel(
                     .desasignarReporte("Bearer $token", reporteId)
                 loadReporte(reporteId)
                 _accionState.value = AccionState.Success
+                AppEvents.notificarReporteModificado()
             } catch (e: retrofit2.HttpException) {
                 val errorBody = e.response()?.errorBody()?.string()
                 val mensaje = try {
@@ -211,6 +214,7 @@ class ReportDetailViewModel(private val tokenManager: TokenManager) : ViewModel(
                 )
                 loadReporte(reporteId)
                 _accionState.value = AccionState.Success
+                AppEvents.notificarReporteModificado()
             } catch (e: retrofit2.HttpException) {
                 val errorBody = e.response()?.errorBody()?.string()
                 val mensaje = try {
@@ -287,6 +291,7 @@ class ReportDetailViewModel(private val tokenManager: TokenManager) : ViewModel(
                 )
                 loadReporte(reporteId)
                 _accionState.value = AccionState.Success
+                AppEvents.notificarReporteModificado()
             } catch (e: retrofit2.HttpException) {
                 val errorBody = e.response()?.errorBody()?.string()
                 val mensaje = try {

@@ -24,9 +24,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.petdata.data.model.GlobalStats
@@ -35,11 +32,8 @@ import com.example.petdata.ui.components.BottomNavigationBar
 import com.example.petdata.ui.theme.*
 import com.example.petdata.ui.viemodel.HomeState
 import com.example.petdata.ui.viemodel.HomeViewModel
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.foundation.clickable
 import com.example.petdata.data.model.Direccion
 import com.example.petdata.navigation.Screen
 
@@ -72,18 +66,6 @@ fun HomeScreen(
 ) {
     val homeState by viewModel.homeState.collectAsStateWithLifecycle()
     val globalStats by viewModel.globalStats.collectAsStateWithLifecycle()
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.loadReportes()
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
 
     Scaffold(
         topBar    = { RescateTopBar() },
