@@ -30,8 +30,15 @@ import com.example.petdata.ui.theme.*
 import com.example.petdata.ui.viemodel.AccionState
 import com.example.petdata.ui.viemodel.ComentarioState
 import com.example.petdata.ui.viemodel.ReportDetailViewModel
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import android.Manifest
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun ReportDetailScreen(
     reporteId: Int,
@@ -52,6 +59,26 @@ fun ReportDetailScreen(
     val accionState by viewModel.accionState.collectAsStateWithLifecycle()
     var showCambiarEstadoDialog by remember { mutableStateOf(false) }
     var showDesasignarDialog by remember { mutableStateOf(false) }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var imagenCierreUri by remember { mutableStateOf<Uri?>(null) }
+    val cameraPermission = rememberPermissionState(Manifest.permission.CAMERA)
+
+    val galleryLauncherCierre = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri -> uri?.let { imagenCierreUri = it } }
+
+    val cameraLauncherCierre = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicturePreview()
+    ) { bitmap ->
+        bitmap?.let {
+            val file = java.io.File(context.cacheDir, "cierre_temp.jpg")
+            file.outputStream().use { out ->
+                it.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out)
+            }
+            imagenCierreUri = Uri.fromFile(file)
+        }
+    }
 
     LaunchedEffect(reporteId) {
         viewModel.loadReporte(reporteId)
@@ -100,7 +127,7 @@ fun ReportDetailScreen(
             TopAppBar(
                 title = { Text("Detalles del Reporte", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = onNavigateBack) {  // ← corregir
                         Icon(Icons.Default.ArrowBack, contentDescription = "Regresar")
                     }
                 },
@@ -166,11 +193,31 @@ fun ReportDetailScreen(
         if (showCambiarEstadoDialog) {
             CambiarEstadoDialog(
                 estadoActual = reporte.estado_reporte_actual,
-                onConfirm = { nuevoEstado, comentario, urlImgs ->
-                    showCambiarEstadoDialog = false
-                    viewModel.cambiarEstado(reporteId, nuevoEstado, comentario, urlImgs)
+                imagenUri = imagenCierreUri,
+                onGallery = { galleryLauncherCierre.launch("image/*") },
+                onCamera = {
+                    if (cameraPermission.status.isGranted) {
+                        cameraLauncherCierre.launch(null)
+                    } else {
+                        cameraPermission.launchPermissionRequest()
+                    }
                 },
-                onDismiss = { showCambiarEstadoDialog = false }
+                onClearImagen = { imagenCierreUri = null },
+                onConfirm = { nuevoEstado, comentario, _ ->
+                    showCambiarEstadoDialog = false
+                    viewModel.cambiarEstadoConImagen(
+                        context = context,
+                        reporteId = reporteId,
+                        nuevoEstadoId = nuevoEstado,
+                        comentario = comentario,
+                        imageUri = imagenCierreUri
+                    )
+                    imagenCierreUri = null
+                },
+                onDismiss = {
+                    showCambiarEstadoDialog = false
+                    imagenCierreUri = null
+                }
             )
         }
 
@@ -689,56 +736,15 @@ fun EstadoProgressBar(estadoActual: Int) {
 }
 
 @Composable
-fun ComentarioItem(comentario: ComentarioResponse) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(GreenPrimary.copy(alpha = 0.1f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("👤", fontSize = 16.sp)
-        }
-        Spacer(modifier = Modifier.width(10.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = comentario.nombre_usuario ?: "Usuario #${comentario.usuario_id}",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary
-                )
-                Text(
-                    text = calcularTiempo(comentario.fecha),
-                    fontSize = 11.sp,
-                    color = TextSecondary
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = comentario.comentario,
-                fontSize = 13.sp,
-                color = TextSecondary,
-                lineHeight = 18.sp
-            )
-        }
-    }
-}
-
-@Composable
 fun CambiarEstadoDialog(
     estadoActual: Int,
+    imagenUri: Uri?,
+    onGallery: () -> Unit,
+    onCamera: () -> Unit,
+    onClearImagen: () -> Unit,
     onConfirm: (nuevoEstado: Int, comentario: String?, urlImgs: List<String>?) -> Unit,
     onDismiss: () -> Unit
 ) {
-    // Opciones según estado actual: rescatista solo puede avanzar linealmente o marcar como falso
     val opciones = buildList {
         when (estadoActual) {
             1 -> add(2 to "En revisión")
@@ -750,7 +756,6 @@ fun CambiarEstadoDialog(
 
     var estadoSeleccionado by remember { mutableStateOf(opciones.first().first) }
     var comentario by remember { mutableStateOf("") }
-    var urlImg by remember { mutableStateOf("") }
 
     val requiereComentario = estadoSeleccionado == 5
     val requiereImagen = estadoSeleccionado == 4
@@ -797,27 +802,58 @@ fun CambiarEstadoDialog(
 
                 if (requiereImagen) {
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text("URL de imagen de cierre (obligatoria):", fontSize = 13.sp, color = TextSecondary)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    OutlinedTextField(
-                        value = urlImg,
-                        onValueChange = { urlImg = it },
-                        placeholder = { Text("https://...", fontSize = 13.sp) },
-                        modifier = Modifier.fillMaxWidth(),
-                        maxLines = 2,
-                        shape = RoundedCornerShape(8.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = GreenPrimary,
-                            unfocusedBorderColor = Color(0xFFE0E0E0)
-                        )
-                    )
+                    Text("Foto de cierre (obligatoria):", fontSize = 13.sp, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (imagenUri != null) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(140.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                        ) {
+                            AsyncImage(
+                                model = imagenUri,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            IconButton(
+                                onClick = onClearImagen,
+                                modifier = Modifier.align(Alignment.TopEnd)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = null, tint = Color.White)
+                            }
+                        }
+                    } else {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = onGallery,
+                                modifier = Modifier.weight(1f).height(56.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Default.Photo, null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Galería", fontSize = 13.sp)
+                            }
+                            OutlinedButton(
+                                onClick = onCamera,
+                                modifier = Modifier.weight(1f).height(56.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Default.CameraAlt, null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Cámara", fontSize = 13.sp)
+                            }
+                        }
+                    }
                 }
             }
         },
         confirmButton = {
             val habilitado = when {
                 requiereComentario -> comentario.isNotBlank()
-                requiereImagen -> urlImg.isNotBlank()
+                requiereImagen -> imagenUri != null
                 else -> true
             }
             Button(
@@ -825,7 +861,7 @@ fun CambiarEstadoDialog(
                     onConfirm(
                         estadoSeleccionado,
                         if (requiereComentario) comentario else null,
-                        if (requiereImagen) listOf(urlImg) else null
+                        null
                     )
                 },
                 enabled = habilitado,
@@ -837,6 +873,52 @@ fun CambiarEstadoDialog(
         }
     )
 }
+
+@Composable
+fun ComentarioItem(comentario: ComentarioResponse) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(GreenPrimary.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("👤", fontSize = 16.sp)
+        }
+        Spacer(modifier = Modifier.width(10.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = comentario.nombre_usuario ?: "Usuario #${comentario.usuario_id}",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+                Text(
+                    text = calcularTiempo(comentario.fecha),
+                    fontSize = 11.sp,
+                    color = TextSecondary
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = comentario.comentario,
+                fontSize = 13.sp,
+                color = TextSecondary,
+                lineHeight = 18.sp
+            )
+        }
+    }
+}
+
+
 
 @Composable
 fun StatChip(icon: String, value: String, label: String) {

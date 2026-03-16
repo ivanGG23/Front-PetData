@@ -20,7 +20,6 @@ sealed class Screen(val route: String) {
     object Login : Screen("login")
     object Register : Screen("register")
     object Home : Screen("home")
-    object Map : Screen("map")
     object Report : Screen("report/{mode}") {
         fun createRoute(mode: String) = "report/$mode"
     }
@@ -31,6 +30,13 @@ sealed class Screen(val route: String) {
     }
     object RescuerHistory : Screen("rescuer_history")
     object RescuerActiveCases : Screen("rescuer_active_cases")
+
+    object Map : Screen("map?lat={lat}&lng={lng}") {
+        fun createRoute(lat: Double? = null, lng: Double? = null): String {
+            return if (lat != null && lng != null) "map?lat=$lat&lng=$lng"
+            else "map"
+        }
+    }
 }
 
 @Composable
@@ -129,13 +135,29 @@ fun NavGraph(
             )
         }
 
-        composable(Screen.Map.route) {
+        composable(
+            route = "map?lat={lat}&lng={lng}",
+            arguments = listOf(
+                androidx.navigation.navArgument("lat") {
+                    type = androidx.navigation.NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                androidx.navigation.navArgument("lng") {
+                    type = androidx.navigation.NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val lat = backStackEntry.arguments?.getString("lat")?.toDoubleOrNull()
+            val lng = backStackEntry.arguments?.getString("lng")?.toDoubleOrNull()
             MapScreen(
                 rolId = rolId,
                 tokenManager = tokenManager,
-                onNavigate = { route ->
-                    navController.navigate(route)
-                }
+                focusLat = lat,
+                focusLng = lng,
+                onNavigate = { route -> navController.navigate(route) }
             )
         }
 

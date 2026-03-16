@@ -1,5 +1,6 @@
 package com.example.petdata.data.network
 
+import com.example.petdata.data.model.AddEvidenciaResponse
 import com.example.petdata.data.model.CambiarEstadoRequest
 import com.example.petdata.data.model.ComentarioResponse
 import com.example.petdata.data.model.CreateComentarioRequest
@@ -159,4 +160,13 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Path("id") id: Int
     )
+
+    @Multipart
+    @POST("reports/evidencia")
+    suspend fun addEvidencia(
+        @Header("Authorization") token: String,
+        @Part("reporte_id") reporte_id: okhttp3.RequestBody,
+        @Part("tipo") tipo: okhttp3.RequestBody,
+        @Part imagen: okhttp3.MultipartBody.Part
+    ): AddEvidenciaResponse
 }

@@ -35,6 +35,13 @@ import com.example.petdata.ui.components.BottomNavigationBar
 import com.example.petdata.ui.theme.*
 import com.example.petdata.ui.viemodel.HomeState
 import com.example.petdata.ui.viemodel.HomeViewModel
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.foundation.clickable
+import com.example.petdata.data.model.Direccion
+import com.example.petdata.navigation.Screen
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data models (solo UI, sin lógica)
@@ -315,7 +322,8 @@ fun HomeScreen(
                         reportes.forEach { reporte ->
                             ReporteCard(
                                 reporte = reporte,
-                                onNavigateToDetail = onNavigateToDetail
+                                onNavigateToDetail = onNavigateToDetail,
+                                onNavigate         = onNavigate
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                         }
@@ -547,39 +555,74 @@ fun FilterChip(label: String, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Report card
-// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+fun DireccionRow(direccion: Direccion) {
+    // Construye la línea más informativa posible con lo que Nominatim haya devuelto
+    val partes = listOfNotNull(
+        direccion.colonia ?: direccion.barrio,
+        direccion.municipio ?: direccion.ciudad
+    )
+    val texto = if (partes.isNotEmpty())
+        partes.joinToString(", ")
+    else
+        direccion.display_name?.take(60) ?: "Ubicación registrada"
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Icon(
+            imageVector        = Icons.Default.LocationOn,
+            contentDescription = null,
+            tint               = GreenPrimary,
+            modifier           = Modifier.size(14.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text     = texto,
+            fontSize = 12.sp,
+            color    = TextSecondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
 @Composable
 fun ReporteCard(
     reporte: ReporteResponse,
-    onNavigateToDetail: (Int) -> Unit = {}
+    onNavigateToDetail: (Int) -> Unit = {},
+    onNavigate: (String) -> Unit = {}
 ) {
+    val context   = LocalContext.current
     val prioridad = when (reporte.prioridad_id) {
-        4 -> "CRÍTICA"
-        3 -> "ALTA"
-        2 -> "MEDIA"
+        4    -> "CRÍTICA"
+        3    -> "ALTA"
+        2    -> "MEDIA"
         else -> "BAJA"
     }
-    val estado = reporte.estado_reporte.nombre
+    val estado  = reporte.estado_reporte.nombre
     val timeAgo = calcularTiempo(reporte.fecha_creacion)
+    val lat     = reporte.locacion?.latitud
+    val lng     = reporte.locacion?.longitud
 
     Card(
-        modifier = Modifier
+        modifier  = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = White),
+        shape     = RoundedCornerShape(16.dp),
+        colors    = CardDefaults.cardColors(containerColor = White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column {
-            // ── Imagen del reporte ──
+
+            // ── Imagen del reporte ──────────────────────────────────────────
             if (reporte.imagen_url != null) {
                 AsyncImage(
-                    model = reporte.imagen_url,
+                    model              = reporte.imagen_url,
                     contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
+                    contentScale       = ContentScale.Crop,
+                    modifier           = Modifier
                         .fillMaxWidth()
                         .height(160.dp)
                         .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
@@ -596,24 +639,25 @@ fun ReporteCard(
                     Icon(
                         Icons.Default.Image,
                         contentDescription = null,
-                        tint = Color(0xFFBDBDBD),
+                        tint     = Color(0xFFBDBDBD),
                         modifier = Modifier.size(40.dp)
                     )
                 }
             }
 
-            // ── Contenido ──
+            // ── Contenido ───────────────────────────────────────────────────
             Column(modifier = Modifier.padding(14.dp)) {
+
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier              = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment     = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = reporte.estado_animal.nombre,
+                        text       = reporte.estado_animal.nombre,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = TextPrimary
+                        fontSize   = 16.sp,
+                        color      = TextPrimary
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         PriorityBadge(priority = prioridad)
@@ -621,14 +665,33 @@ fun ReporteCard(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // ── Colonia / municipio ──
+                if (reporte.direccion != null) {
+                    DireccionRow(direccion = reporte.direccion)
+                    Spacer(modifier = Modifier.height(2.dp))
+                }
+
+                // ── display_name completo ──
+                if (!reporte.direccion?.display_name.isNullOrBlank()) {
+                    Text(
+                        text       = reporte.direccion!!.display_name!!,
+                        fontSize   = 11.sp,
+                        color      = TextSecondary,
+                        maxLines   = 2,
+                        overflow   = TextOverflow.Ellipsis,
+                        lineHeight = 15.sp
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                }
 
                 Text(
-                    text = reporte.descripcion,
-                    fontSize = 13.sp,
-                    color = TextSecondary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+                    text       = reporte.descripcion,
+                    fontSize   = 13.sp,
+                    color      = TextSecondary,
+                    maxLines   = 2,
+                    overflow   = TextOverflow.Ellipsis,
                     lineHeight = 18.sp
                 )
 
@@ -638,7 +701,7 @@ fun ReporteCard(
                     Icon(
                         Icons.Default.Schedule,
                         contentDescription = null,
-                        tint = GreenPrimary,
+                        tint     = GreenPrimary,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -647,12 +710,33 @@ fun ReporteCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // ── Botón Abrir Mapa (solo si hay coordenadas) ──
+                if (lat != null && lng != null) {
+                    Button(
+                        onClick = {
+                            onNavigate(Screen.Map.createRoute(lat, lng))
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape  = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
+                    ) {
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Abrir Mapa", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
                 OutlinedButton(
-                    onClick = { onNavigateToDetail(reporte.id) },
+                    onClick  = { onNavigateToDetail(reporte.id) },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    border = ButtonDefaults.outlinedButtonBorder,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
+                    shape    = RoundedCornerShape(8.dp),
+                    border   = ButtonDefaults.outlinedButtonBorder,
+                    colors   = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
                 ) {
                     Text("Ver Detalles", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 }
