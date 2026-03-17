@@ -159,10 +159,10 @@ fun MapScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                LegendItem("Crítica", Color(0xFFE53935))
-                                LegendItem("Alta", Color(0xFFFF9800))
-                                LegendItem("Media", Color(0xFFFFC107))
                                 LegendItem("Baja", Color(0xFF2196F3))
+                                LegendItem("Media", Color(0xFFFFC107))
+                                LegendItem("Alta", Color(0xFFFF9800))
+                                LegendItem("Crítica", Color(0xFFE53935))
                             }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
@@ -224,27 +224,53 @@ private fun agregarCalor(mapView: MapView, puntos: List<HeatmapPoint>) {
     val overlay = object : Overlay() {
         override fun draw(canvas: Canvas, mapView: MapView, shadow: Boolean) {
             if (shadow) return
-            puntos.forEach { punto ->
+
+            // Calcular densidad por punto (cuántos otros puntos están cerca)
+            val densidades = puntos.map { punto ->
+                val cercanos = puntos.count { otro ->
+                    val dlat = punto.latitud - otro.latitud
+                    val dlng = punto.longitud - otro.longitud
+                    Math.sqrt(dlat * dlat + dlng * dlng) < 0.01 // ~1km de radio
+                }
+                cercanos
+            }
+            val maxDensidad = densidades.maxOrNull()?.toFloat() ?: 1f
+
+            puntos.forEachIndexed { index, punto ->
                 val geoPoint = GeoPoint(punto.latitud, punto.longitud)
                 val screenPoint = mapView.projection.toPixels(geoPoint, null)
+                val densidad = densidades[index].toFloat() / maxDensidad
 
-                val color = when (punto.prioridad_id) {
-                    4 -> android.graphics.Color.argb(120, 229, 57, 53)   // Crítica - rojo
-                    3 -> android.graphics.Color.argb(120, 255, 152, 0)   // Alta - naranja
-                    2 -> android.graphics.Color.argb(120, 255, 193, 7)   // Media - amarillo
-                    else -> android.graphics.Color.argb(120, 33, 150, 243) // Baja - azul
+                val radio = 80f + (densidad * 60f) // radio entre 80 y 140 según densidad
+
+                // Color según densidad: azul → amarillo → naranja → rojo
+                val color = when {
+                    densidad > 0.75f -> android.graphics.Color.argb(180, 220, 30, 30)   // rojo
+                    densidad > 0.50f -> android.graphics.Color.argb(160, 255, 120, 0)   // naranja
+                    densidad > 0.25f -> android.graphics.Color.argb(140, 255, 220, 0)   // amarillo
+                    else ->             android.graphics.Color.argb(120, 0, 150, 255)   // azul
                 }
+
+                // Color transparente para el borde del gradiente
+                val colorTransparente = android.graphics.Color.argb(0,
+                    android.graphics.Color.red(color),
+                    android.graphics.Color.green(color),
+                    android.graphics.Color.blue(color)
+                )
+
+                val gradient = android.graphics.RadialGradient(
+                    screenPoint.x.toFloat(),
+                    screenPoint.y.toFloat(),
+                    radio,
+                    intArrayOf(color, colorTransparente),
+                    floatArrayOf(0f, 1f),
+                    android.graphics.Shader.TileMode.CLAMP
+                )
 
                 val paint = Paint().apply {
-                    this.color = color
+                    shader = gradient
                     style = Paint.Style.FILL
-                }
-
-                val radio = when (punto.prioridad_id) {
-                    4 -> 80f
-                    3 -> 65f
-                    2 -> 50f
-                    else -> 35f
+                    isAntiAlias = true
                 }
 
                 canvas.drawCircle(

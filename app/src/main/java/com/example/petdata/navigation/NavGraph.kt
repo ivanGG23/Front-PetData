@@ -97,7 +97,7 @@ fun NavGraph(
                 onGoogleSignIn = {
                     val intent = android.content.Intent(
                         android.content.Intent.ACTION_VIEW,
-                        android.net.Uri.parse("https://api-gateway-z8qa.onrender.com/auth/google")
+                        android.net.Uri.parse("https://api-gateway-production-db18.up.railway.app/auth/google")
                     )
                     context.startActivity(intent)
                 }
