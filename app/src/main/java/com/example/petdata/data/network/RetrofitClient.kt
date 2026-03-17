@@ -6,7 +6,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 object RetrofitClient {
 
     //Bd-desplegada
-    private const val BASE_URL = "https://api-gateway-z8qa.onrender.com/"
+    private const val BASE_URL = "https://api-gateway-production-db18.up.railway.app/"
 
     val apiService: ApiService by lazy {
         Retrofit.Builder()
