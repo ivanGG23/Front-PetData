@@ -328,7 +328,7 @@ fun FrequencyByZoneChart(zonas: List<ZonaStat>) {
                 color = TextPrimary
             )
             Text(
-                text = "Reportes vs resueltos por barrio",
+                text = "Reportes vs resueltos por ciudad",
                 fontSize = 12.sp,
                 color = TextSecondary
             )
