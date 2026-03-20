@@ -1,7 +1,6 @@
 package com.example.petdata.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -16,9 +15,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -33,7 +35,8 @@ import java.util.Locale
 @Composable
 fun RegisterScreen(
     viewModel: RegisterViewModel,
-    onNavigateToLogin: () -> Unit
+    onNavigateToLogin: () -> Unit,
+    onNavigateToTerms: () -> Unit   // ← NUEVO parámetro
 ) {
     var name by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
@@ -46,6 +49,11 @@ fun RegisterScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
+
+    // ── NUEVO: estado del checkbox de términos ─────────────────────────────
+    var termsAccepted by remember { mutableStateOf(false) }
+    var termsError by remember { mutableStateOf(false) }
+    // ──────────────────────────────────────────────────────────────────────
 
     val registerState by viewModel.registerState.collectAsStateWithLifecycle()
     var showSuccessDialog by remember { mutableStateOf(false) }
@@ -95,6 +103,14 @@ fun RegisterScreen(
             confirmPassword != password -> { valido = false; "Las contraseñas no coinciden" }
             else -> null
         }
+
+        // ── NUEVO: validar que aceptó los términos ─────────────────────────
+        if (!termsAccepted) {
+            termsError = true
+            valido = false
+        }
+        // ──────────────────────────────────────────────────────────────────
+
         return valido
     }
 
@@ -205,8 +221,8 @@ fun RegisterScreen(
                 contentAlignment = Alignment.Center
             ) { Text("❤️", fontSize = 40.sp) }
             Spacer(modifier = Modifier.height(12.dp))
-            Text("RescateAnimal", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = White)
-            Text("Únete a nuestra comunidad", fontSize = 13.sp, color = White.copy(alpha = 0.9f))
+            Text("RescateAnimal", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text("Únete a nuestra comunidad", fontSize = 13.sp, color = Color.White.copy(alpha = 0.9f))
         }
 
         Card(
@@ -430,6 +446,64 @@ fun RegisterScreen(
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
+
+                // ── NUEVO: Checkbox de términos y condiciones ──────────────────────────
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Checkbox(
+                        checked = termsAccepted,
+                        onCheckedChange = {
+                            termsAccepted = it
+                            if (it) termsError = false
+                        },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = GreenPrimary,
+                            uncheckedColor = if (termsError) Color.Red else Color(0xFFBDBDBD)
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Column {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = buildAnnotatedString {
+                                append("He leído y acepto los ")
+                                withStyle(SpanStyle(color = GreenPrimary, fontWeight = FontWeight.SemiBold)) {
+                                    append("Términos y Condiciones")
+                                }
+                                append(" de PetData, incluyendo el uso de mi ubicación GPS.")
+                            },
+                            fontSize = 13.sp,
+                            color = if (termsError) Color.Red else TextSecondary,
+                            lineHeight = 19.sp,
+                            modifier = Modifier.clickable { onNavigateToTerms() }
+                        )
+                        if (termsError) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Debes aceptar los términos para continuar",
+                                fontSize = 12.sp,
+                                color = Color.Red
+                            )
+                        }
+                    }
+                }
+                // ── Enlace separado para leer los términos ─────────────────────────────
+                TextButton(
+                    onClick = onNavigateToTerms,
+                    modifier = Modifier.padding(start = 36.dp),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Text(
+                        text = "Leer términos completos →",
+                        fontSize = 12.sp,
+                        color = GreenPrimary
+                    )
+                }
+                // ──────────────────────────────────────────────────────────────────────
+
+                Spacer(modifier = Modifier.height(8.dp))
 
                 if (registerState is RegisterState.Loading) {
                     LinearProgressIndicator(

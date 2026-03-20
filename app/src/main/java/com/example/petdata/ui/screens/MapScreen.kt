@@ -7,16 +7,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -52,10 +49,8 @@ fun MapScreen(
     )
     val mapState by viewModel.mapState.collectAsStateWithLifecycle()
 
-    // Modo del mapa: "marcadores" o "calor"
     var modoMapa by remember { mutableStateOf("marcadores") }
 
-    // Inicializar OSMDroid
     LaunchedEffect(Unit) {
         Configuration.getInstance().userAgentValue = context.packageName
     }
@@ -87,10 +82,9 @@ fun MapScreen(
                         Text((mapState as MapState.Error).message, color = Color.Red)
                     }
                 }
-                    is MapState.Success -> {
+                is MapState.Success -> {
                     val data = mapState as MapState.Success
 
-                    // Mapa OSMDroid
                     key(data.puntos.size, modoMapa, focusLat, focusLng) {
                         AndroidView(
                             factory = { ctx -> crearMapView(ctx) },
@@ -102,11 +96,9 @@ fun MapScreen(
                                     agregarCalor(mapView, data.puntos)
                                 }
 
-                                // Si viene con coordenadas específicas, enfocar ahí
                                 if (focusLat != null && focusLng != null) {
                                     mapView.controller.setZoom(17.0)
                                     mapView.controller.setCenter(GeoPoint(focusLat, focusLng))
-                                    // Agregar marcador especial para el reporte enfocado
                                     val marker = Marker(mapView).apply {
                                         position = GeoPoint(focusLat, focusLng)
                                         title = "Ubicación del reporte"
@@ -127,7 +119,6 @@ fun MapScreen(
                         )
                     }
 
-                    // Botón para cambiar modo
                     FloatingActionButton(
                         onClick = {
                             modoMapa = if (modoMapa == "marcadores") "calor" else "marcadores"
@@ -140,7 +131,6 @@ fun MapScreen(
                         Icon(Icons.Default.Layers, contentDescription = null, tint = White)
                     }
 
-                    // Leyenda
                     Card(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -157,12 +147,14 @@ fun MapScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                LegendItem("Baja", Color(0xFF2196F3))
-                                LegendItem("Media", Color(0xFFFFC107))
-                                LegendItem("Alta", Color(0xFFFF9800))
-                                LegendItem("Crítica", Color(0xFFE53935))
+                            if (modoMapa != "marcadores") {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    LegendItem("Baja (0–1)", Color(0xFF2196F3))
+                                    LegendItem("Media (2–4)", Color(0xFFFFC107))
+                                    LegendItem("Alta (5–9)", Color(0xFFFF9800))
+                                    LegendItem("Crítica (10+)", Color(0xFFE53935))
+                                }
                             }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
@@ -183,7 +175,7 @@ private fun crearMapView(context: Context): MapView {
     mapView.setTileSource(TileSourceFactory.MAPNIK)
     mapView.setMultiTouchControls(true)
     mapView.controller.setZoom(5.0)
-    mapView.controller.setCenter(GeoPoint(23.6345, -102.5528)) // Centro de México
+    mapView.controller.setCenter(GeoPoint(23.6345, -102.5528))
     return mapView
 }
 
@@ -191,7 +183,7 @@ private fun agregarMarcadores(
     mapView: MapView,
     puntos: List<HeatmapPoint>,
     context: Context,
-    onNavigate: (String) -> Unit  // ← nuevo
+    onNavigate: (String) -> Unit
 ) {
     puntos.forEach { punto ->
         val marker = Marker(mapView)
@@ -215,7 +207,6 @@ private fun agregarMarcadores(
                 true
             }
         }
-
         mapView.overlays.add(marker)
     }
 }
@@ -225,34 +216,47 @@ private fun agregarCalor(mapView: MapView, puntos: List<HeatmapPoint>) {
         override fun draw(canvas: Canvas, mapView: MapView, shadow: Boolean) {
             if (shadow) return
 
-            // Calcular densidad por punto (cuántos otros puntos están cerca)
-            val densidades = puntos.map { punto ->
-                val cercanos = puntos.count { otro ->
+            // Contar vecinos reales dentro de ~1km para cada punto
+            // Se excluye el punto mismo (por eso se resta 1)
+            val vecinosPorPunto = puntos.map { punto ->
+                puntos.count { otro ->
                     val dlat = punto.latitud - otro.latitud
                     val dlng = punto.longitud - otro.longitud
-                    Math.sqrt(dlat * dlat + dlng * dlng) < 0.01 // ~1km de radio
-                }
-                cercanos
+                    Math.sqrt(dlat * dlat + dlng * dlng) < 0.01  // ~1km de radio
+                } - 1  // no contarse a sí mismo
             }
-            val maxDensidad = densidades.maxOrNull()?.toFloat() ?: 1f
 
             puntos.forEachIndexed { index, punto ->
                 val geoPoint = GeoPoint(punto.latitud, punto.longitud)
                 val screenPoint = mapView.projection.toPixels(geoPoint, null)
-                val densidad = densidades[index].toFloat() / maxDensidad
+                val vecinos = vecinosPorPunto[index]
 
-                val radio = 80f + (densidad * 60f) // radio entre 80 y 140 según densidad
-
-                // Color según densidad: azul → amarillo → naranja → rojo
+                // ── Umbrales absolutos ──────────────────────────────────────
+                // Baja:    0–1 vecinos  → azul    (punto aislado o casi solo)
+                // Media:   2–4 vecinos  → amarillo (pequeño grupo)
+                // Alta:    5–9 vecinos  → naranja  (zona activa)
+                // Crítica: 10+ vecinos  → rojo     (zona de alta concentración)
+                //
+                // Si tu ciudad tiene muchos reportes y todo queda azul,
+                // baja los umbrales (ej. 1 / 3 / 6).
+                // Si todo queda rojo, súbelos (ej. 5 / 15 / 30).
+                // ────────────────────────────────────────────────────────────
                 val color = when {
-                    densidad > 0.75f -> android.graphics.Color.argb(180, 220, 30, 30)   // rojo
-                    densidad > 0.50f -> android.graphics.Color.argb(160, 255, 120, 0)   // naranja
-                    densidad > 0.25f -> android.graphics.Color.argb(140, 255, 220, 0)   // amarillo
-                    else ->             android.graphics.Color.argb(120, 0, 150, 255)   // azul
+                    vecinos >= 10 -> android.graphics.Color.argb(180, 220, 30,  30)   // rojo
+                    vecinos >= 5  -> android.graphics.Color.argb(160, 255, 120,  0)   // naranja
+                    vecinos >= 2  -> android.graphics.Color.argb(140, 255, 220,  0)   // amarillo
+                    else          -> android.graphics.Color.argb(120,   0, 150, 255)  // azul
                 }
 
-                // Color transparente para el borde del gradiente
-                val colorTransparente = android.graphics.Color.argb(0,
+                val radio = when {
+                    vecinos >= 10 -> 140f
+                    vecinos >= 5  -> 120f
+                    vecinos >= 2  -> 100f
+                    else          ->  80f
+                }
+
+                val colorTransparente = android.graphics.Color.argb(
+                    0,
                     android.graphics.Color.red(color),
                     android.graphics.Color.green(color),
                     android.graphics.Color.blue(color)
