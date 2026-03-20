@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.first
 sealed class Screen(val route: String) {
     object Login : Screen("login")
     object Register : Screen("register")
+    object Terms : Screen("terms")                          // ← NUEVO
     object Home : Screen("home")
     object Report : Screen("report/{mode}") {
         fun createRoute(mode: String) = "report/$mode"
@@ -30,7 +31,6 @@ sealed class Screen(val route: String) {
     }
     object RescuerHistory : Screen("rescuer_history")
     object RescuerActiveCases : Screen("rescuer_active_cases")
-
     object Map : Screen("map?lat={lat}&lng={lng}") {
         fun createRoute(lat: Double? = null, lng: Double? = null): String {
             return if (lat != null && lng != null) "map?lat=$lat&lng=$lng"
@@ -47,7 +47,6 @@ fun NavGraph(
     onRolIdUpdated: (Int) -> Unit
 ) {
 
-    // Verificar sesión activa al arrancar
     LaunchedEffect(Unit) {
         val token = tokenManager.getValidToken()
         if (token != null) {
@@ -64,12 +63,13 @@ fun NavGraph(
         navController = navController,
         startDestination = Screen.Login.route
     ) {
+
+        // ── Login ──────────────────────────────────────────────────────────
         composable(Screen.Login.route) {
             val viewModel: LoginViewModel = viewModel(
                 factory = LoginViewModel.Factory(tokenManager)
             )
 
-            // AGREGA ESTO — observar cuando Google auth complete
             val googleRolId by MainActivity.googleAuthResult.collectAsStateWithLifecycle()
             LaunchedEffect(googleRolId) {
                 googleRolId?.let { rol ->
@@ -81,7 +81,7 @@ fun NavGraph(
                 }
             }
 
-            val context = androidx.compose.ui.platform.LocalContext.current  // AGREGA ESTO
+            val context = androidx.compose.ui.platform.LocalContext.current
 
             LoginScreen(
                 viewModel = viewModel,
@@ -94,6 +94,9 @@ fun NavGraph(
                 onNavigateToRegister = {
                     navController.navigate(Screen.Register.route)
                 },
+                onNavigateToTerms = {                       // ← NUEVO
+                    navController.navigate(Screen.Terms.route)
+                },
                 onGoogleSignIn = {
                     val intent = android.content.Intent(
                         android.content.Intent.ACTION_VIEW,
@@ -104,18 +107,32 @@ fun NavGraph(
             )
         }
 
+        // ── Register ───────────────────────────────────────────────────────
         composable(Screen.Register.route) {
-            val viewModel: RegisterViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+            val viewModel: RegisterViewModel = viewModel(
                 factory = RegisterViewModel.Factory(tokenManager)
             )
             RegisterScreen(
                 viewModel = viewModel,
                 onNavigateToLogin = {
                     navController.popBackStack()
+                },
+                onNavigateToTerms = {                       // ← NUEVO
+                    navController.navigate(Screen.Terms.route)
                 }
             )
         }
 
+        // ── Terms ──────────────────────────────────────────────────────────
+        composable(Screen.Terms.route) {                    // ← NUEVO
+            TermsScreen(
+                onBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // ── Home ───────────────────────────────────────────────────────────
         composable(Screen.Home.route) {
             val viewModel: HomeViewModel = viewModel(
                 factory = HomeViewModel.Factory(tokenManager)
@@ -139,6 +156,7 @@ fun NavGraph(
             )
         }
 
+        // ── Map ────────────────────────────────────────────────────────────
         composable(
             route = "map?lat={lat}&lng={lng}",
             arguments = listOf(
@@ -165,6 +183,7 @@ fun NavGraph(
             )
         }
 
+        // ── Report Form ────────────────────────────────────────────────────
         composable(Screen.Report.route) { backStackEntry ->
             val mode = backStackEntry.arguments?.getString("mode") ?: "crear"
             ReportFormScreen(
@@ -176,16 +195,16 @@ fun NavGraph(
             )
         }
 
+        // ── Dashboard ──────────────────────────────────────────────────────
         composable(Screen.Dashboard.route) {
             DashboardScreen(
                 rolId = rolId,
                 tokenManager = tokenManager,
-                onNavigate = { route ->
-                    navController.navigate(route)
-                }
+                onNavigate = { route -> navController.navigate(route) }
             )
         }
 
+        // ── Settings ───────────────────────────────────────────────────────
         composable(Screen.Settings.route) {
             SettingsScreen(
                 rolId = rolId,
@@ -200,6 +219,7 @@ fun NavGraph(
             )
         }
 
+        // ── Report Detail ──────────────────────────────────────────────────
         composable(Screen.ReportDetail.route) { backStackEntry ->
             val reporteId = backStackEntry.arguments?.getString("reporteId")?.toInt() ?: 0
             ReportDetailScreen(
@@ -211,6 +231,7 @@ fun NavGraph(
             )
         }
 
+        // ── Rescuer History ────────────────────────────────────────────────
         composable(Screen.RescuerHistory.route) {
             RescuerHistoryScreen(
                 rolId = rolId,
@@ -221,6 +242,7 @@ fun NavGraph(
             )
         }
 
+        // ── Rescuer Active Cases ───────────────────────────────────────────
         composable(Screen.RescuerActiveCases.route) {
             RescuerActiveCasesScreen(
                 rolId = rolId,
@@ -231,6 +253,7 @@ fun NavGraph(
             )
         }
 
+        // ── Personal Info ──────────────────────────────────────────────────
         composable("personal_info") {
             PersonalInfoScreen(
                 tokenManager = tokenManager,

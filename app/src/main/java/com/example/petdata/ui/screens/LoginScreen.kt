@@ -18,9 +18,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -34,6 +37,7 @@ fun LoginScreen(
     viewModel: LoginViewModel,
     onLoginSuccess: (rolId: Int) -> Unit,
     onNavigateToRegister: () -> Unit,
+    onNavigateToTerms: () -> Unit,   // ← NUEVO parámetro
     onGoogleSignIn: () -> Unit = {}
 ) {
     var email by remember { mutableStateOf("") }
@@ -41,6 +45,11 @@ fun LoginScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var emailError by remember { mutableStateOf<String?>(null) }
     var passwordError by remember { mutableStateOf<String?>(null) }
+
+    // ── NUEVO: modal de T&C antes de Google Sign-In ────────────────────────
+    var showGoogleTermsDialog by remember { mutableStateOf(false) }
+    var googleTermsAccepted by remember { mutableStateOf(false) }
+    // ──────────────────────────────────────────────────────────────────────
 
     val loginState by viewModel.loginState.collectAsStateWithLifecycle()
     val googleRolId by MainActivity.googleAuthResult.collectAsStateWithLifecycle()
@@ -66,6 +75,107 @@ fun LoginScreen(
             onLoginSuccess((loginState as LoginState.Success).rolId)
         }
     }
+
+    // ── NUEVO: Modal de T&C para Google Sign-In ────────────────────────────
+    if (showGoogleTermsDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showGoogleTermsDialog = false
+                googleTermsAccepted = false
+            },
+            title = {
+                Text(
+                    text = "Antes de continuar con Google",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "Al continuar, PetData creará una cuenta vinculada a tu cuenta de Google y recopilará los siguientes datos:",
+                        fontSize = 14.sp,
+                        color = TextSecondary,
+                        lineHeight = 21.sp
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("• Nombre y correo de tu cuenta Google", fontSize = 13.sp, color = TextSecondary)
+                    Text("• Ubicación GPS al crear reportes", fontSize = 13.sp, color = TextSecondary)
+                    Text("• Imágenes y comentarios que subas", fontSize = 13.sp, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Checkbox dentro del dialog
+                    Row(verticalAlignment = Alignment.Top) {
+                        Checkbox(
+                            checked = googleTermsAccepted,
+                            onCheckedChange = { googleTermsAccepted = it },
+                            colors = CheckboxDefaults.colors(checkedColor = GreenPrimary)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Column {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = buildAnnotatedString {
+                                    append("Acepto los ")
+                                    withStyle(SpanStyle(color = GreenPrimary, fontWeight = FontWeight.SemiBold)) {
+                                        append("Términos y Condiciones")
+                                    }
+                                    append(" de PetData")
+                                },
+                                fontSize = 13.sp,
+                                color = TextSecondary,
+                                modifier = Modifier.clickable { onNavigateToTerms() }
+                            )
+                        }
+                    }
+
+                    // Enlace para leer los términos completos
+                    TextButton(
+                        onClick = onNavigateToTerms,
+                        contentPadding = PaddingValues(start = 40.dp, top = 0.dp, end = 0.dp, bottom = 0.dp)
+                    ) {
+                        Text(
+                            text = "Leer términos completos →",
+                            fontSize = 12.sp,
+                            color = GreenPrimary
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (googleTermsAccepted) {
+                            showGoogleTermsDialog = false
+                            googleTermsAccepted = false
+                            onGoogleSignIn()   // ← Solo se lanza Google aquí
+                        }
+                    },
+                    enabled = googleTermsAccepted,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = GreenPrimary,
+                        disabledContainerColor = Color(0xFFBDBDBD)
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Continuar con Google", fontSize = 14.sp)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showGoogleTermsDialog = false
+                        googleTermsAccepted = false
+                    }
+                ) {
+                    Text("Cancelar", color = TextSecondary)
+                }
+            },
+            shape = RoundedCornerShape(16.dp),
+            containerColor = White
+        )
+    }
+    // ──────────────────────────────────────────────────────────────────────
 
     Box(
         modifier = Modifier
@@ -103,13 +213,13 @@ fun LoginScreen(
                     text = "RescateAnimal",
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
-                    color = White
+                    color = Color.White
                 )
 
                 Text(
                     text = "Juntos salvamos vidas",
                     fontSize = 14.sp,
-                    color = White.copy(alpha = 0.9f)
+                    color = Color.White.copy(alpha = 0.9f)
                 )
             }
 
@@ -206,8 +316,6 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-
-
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Error
@@ -236,7 +344,7 @@ fun LoginScreen(
                     ) {
                         if (loginState is LoginState.Loading) {
                             CircularProgressIndicator(
-                                color = White,
+                                color = Color.White,
                                 modifier = Modifier.size(24.dp),
                                 strokeWidth = 2.dp
                             )
@@ -263,13 +371,15 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Botón Google
+                    // ── Botón Google — ahora abre el modal primero ─────────────────────
                     OutlinedButton(
-                        onClick = onGoogleSignIn,
+                        onClick = {
+                            showGoogleTermsDialog = true   // ← Abre el modal, NO llama a onGoogleSignIn directamente
+                        },
                         modifier = Modifier.fillMaxWidth().height(50.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = White,
+                            containerColor = Color.White,
                             contentColor = TextPrimary
                         )
                     ) {
@@ -287,6 +397,7 @@ fun LoginScreen(
                             color = TextPrimary
                         )
                     }
+                    // ──────────────────────────────────────────────────────────────────
 
                     Spacer(modifier = Modifier.height(24.dp))
 
