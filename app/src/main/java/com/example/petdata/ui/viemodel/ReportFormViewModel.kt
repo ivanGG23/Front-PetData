@@ -7,7 +7,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.petdata.data.AppEvents
 import com.example.petdata.data.local.TokenManager
-import com.example.petdata.data.model.TipoAnimal
 import com.example.petdata.data.network.RetrofitClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,45 +41,48 @@ class ReportFormViewModel(private val tokenManager: TokenManager) : ViewModel() 
         longitud: Double,
         precisionMetros: Double?,
         contactoOpcional: String?,
-        imageUri: Uri
+        imageUris: List<Uri>           // ← antes era un solo Uri, ahora es lista
     ) {
         viewModelScope.launch {
             _formState.value = ReportFormState.Loading
             try {
                 val token = tokenManager.token.first() ?: ""
 
-                // Convertir Uri a File temporal
-                val inputStream = context.contentResolver.openInputStream(imageUri)
-                    ?: throw Exception("No se pudo leer la imagen")
-                val tempFile = File(context.cacheDir, "imagen_reporte.jpg")
-                FileOutputStream(tempFile).use { output ->
-                    inputStream.copyTo(output)
+                // Convertir cada Uri a un MultipartBody.Part
+                // El campo se llama "imagenes" para que coincida con req.files en el backend
+                val imagenesParts = imageUris.mapIndexed { index, uri ->
+                    val inputStream = context.contentResolver.openInputStream(uri)
+                        ?: throw Exception("No se pudo leer la imagen ${index + 1}")
+                    val tempFile = File(context.cacheDir, "imagen_reporte_$index.jpg")
+                    FileOutputStream(tempFile).use { output -> inputStream.copyTo(output) }
+                    MultipartBody.Part.createFormData(
+                        "imagenes",
+                        tempFile.name,
+                        tempFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
+                    )
                 }
-
-                // Construir multipart
-                val imagenPart = MultipartBody.Part.createFormData(
-                    "imagenes",
-                    tempFile.name,
-                    tempFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
-                )
 
                 val toText = { s: String -> s.toRequestBody("text/plain".toMediaTypeOrNull()) }
 
                 val api = RetrofitClient.apiServiceWithToken(token)
                 val result = api.createReport(
-                    token       = "Bearer $token",
-                    estadoAnimalId = toText(estadoAnimalId.toString()),
-                    tipoAnimalId   = toText(tipoAnimalId.toString()),
-                    prioridadId    = toText(prioridadId.toString()),
-                    descripcion    = toText(descripcion),
-                    latitud        = toText(latitud.toString()),
-                    longitud       = toText(longitud.toString()),
-                    precisionMetros = precisionMetros?.let { toText(it.toString()) },
+                    token            = "Bearer $token",
+                    estadoAnimalId   = toText(estadoAnimalId.toString()),
+                    tipoAnimalId     = toText(tipoAnimalId.toString()),
+                    prioridadId      = toText(prioridadId.toString()),
+                    descripcion      = toText(descripcion),
+                    latitud          = toText(latitud.toString()),
+                    longitud         = toText(longitud.toString()),
+                    precisionMetros  = precisionMetros?.let { toText(it.toString()) },
                     contactoOpcional = contactoOpcional?.let { toText(it) },
-                    imagen         = imagenPart
+                    imagenes         = imagenesParts
                 )
 
-                tempFile.delete()
+                // Limpiar archivos temporales
+                imageUris.forEachIndexed { index, _ ->
+                    File(context.cacheDir, "imagen_reporte_$index.jpg").delete()
+                }
+
                 _formState.value = ReportFormState.Success(result.reporte_id)
                 AppEvents.notificarReporteModificado()
 

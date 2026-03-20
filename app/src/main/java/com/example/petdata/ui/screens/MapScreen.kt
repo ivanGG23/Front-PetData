@@ -3,11 +3,15 @@ package com.example.petdata.ui.screens
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.location.LocationManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -51,8 +55,67 @@ fun MapScreen(
 
     var modoMapa by remember { mutableStateOf("marcadores") }
 
+    // ── Ubicación actual ───────────────────────────────────────────────────
+    var ubicacionActual by remember { mutableStateOf<GeoPoint?>(null) }
+    var mapViewRef by remember { mutableStateOf<MapView?>(null) }
+    var mensajeUbicacion by remember { mutableStateOf<String?>(null) }
+
+    val permisosLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permisos ->
+        val concedido = permisos[android.Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                permisos[android.Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (concedido) {
+            val ubicacion = obtenerUbicacion(context)
+            if (ubicacion != null) {
+                ubicacionActual = ubicacion
+                mapViewRef?.controller?.animateTo(ubicacion)
+                mapViewRef?.controller?.setZoom(16.0)
+                mapViewRef?.invalidate()
+            } else {
+                mensajeUbicacion = "No se pudo obtener tu ubicación. Activa el GPS."
+            }
+        } else {
+            mensajeUbicacion = "Permiso de ubicación denegado."
+        }
+    }
+
+    fun onBotonUbicacion() {
+        val tienePermiso = androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+        if (tienePermiso) {
+            val ubicacion = obtenerUbicacion(context)
+            if (ubicacion != null) {
+                ubicacionActual = ubicacion
+                mapViewRef?.controller?.animateTo(ubicacion)
+                mapViewRef?.controller?.setZoom(16.0)
+                mapViewRef?.invalidate()
+            } else {
+                mensajeUbicacion = "No se pudo obtener tu ubicación. Activa el GPS."
+            }
+        } else {
+            permisosLauncher.launch(
+                arrayOf(
+                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+    // ──────────────────────────────────────────────────────────────────────
+
     LaunchedEffect(Unit) {
         Configuration.getInstance().userAgentValue = context.packageName
+    }
+
+    LaunchedEffect(mensajeUbicacion) {
+        if (mensajeUbicacion != null) {
+            kotlinx.coroutines.delay(3000)
+            mensajeUbicacion = null
+        }
     }
 
     Scaffold(
@@ -85,15 +148,24 @@ fun MapScreen(
                 is MapState.Success -> {
                     val data = mapState as MapState.Success
 
-                    key(data.puntos.size, modoMapa, focusLat, focusLng) {
+                    key(data.puntos.size, modoMapa, focusLat, focusLng, ubicacionActual) {
                         AndroidView(
-                            factory = { ctx -> crearMapView(ctx) },
+                            factory = { ctx ->
+                                crearMapView(ctx).also { mapViewRef = it }
+                            },
                             update = { mapView ->
+                                mapViewRef = mapView
                                 mapView.overlays.clear()
+
                                 if (modoMapa == "marcadores") {
                                     agregarMarcadores(mapView, data.puntos, context, onNavigate)
                                 } else {
                                     agregarCalor(mapView, data.puntos)
+                                }
+
+                                // Dibujar ubicación actual encima de todo
+                                ubicacionActual?.let { ubicacion ->
+                                    agregarUbicacionActual(mapView, ubicacion)
                                 }
 
                                 if (focusLat != null && focusLng != null) {
@@ -105,7 +177,7 @@ fun MapScreen(
                                         setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                                     }
                                     mapView.overlays.add(marker)
-                                } else if (data.puntos.isNotEmpty()) {
+                                } else if (ubicacionActual == null && data.puntos.isNotEmpty()) {
                                     val centro = GeoPoint(
                                         data.puntos.map { it.latitud }.average(),
                                         data.puntos.map { it.longitud }.average()
@@ -119,18 +191,55 @@ fun MapScreen(
                         )
                     }
 
-                    FloatingActionButton(
-                        onClick = {
-                            modoMapa = if (modoMapa == "marcadores") "calor" else "marcadores"
-                        },
+                    // ── FABs en columna (esquina superior derecha) ─────────
+                    Column(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(16.dp),
-                        containerColor = GreenPrimary
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Icon(Icons.Default.Layers, contentDescription = null, tint = White)
+                        // Cambiar modo marcadores / calor
+                        FloatingActionButton(
+                            onClick = {
+                                modoMapa = if (modoMapa == "marcadores") "calor" else "marcadores"
+                            },
+                            containerColor = GreenPrimary
+                        ) {
+                            Icon(Icons.Default.Layers, contentDescription = "Cambiar modo", tint = White)
+                        }
+
+                        // Mi ubicación actual
+                        FloatingActionButton(
+                            onClick = { onBotonUbicacion() },
+                            containerColor = White
+                        ) {
+                            Icon(
+                                Icons.Default.MyLocation,
+                                contentDescription = "Mi ubicación",
+                                tint = GreenPrimary
+                            )
+                        }
                     }
 
+                    // Snackbar de error de ubicación (desaparece en 3 seg)
+                    mensajeUbicacion?.let { mensaje ->
+                        Card(
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = 16.dp, start = 16.dp, end = 80.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF323232))
+                        ) {
+                            Text(
+                                text = mensaje,
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                            )
+                        }
+                    }
+
+                    // Leyenda
                     Card(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -157,17 +266,99 @@ fun MapScreen(
                                 }
                             }
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "${data.puntos.size} reportes con ubicación",
-                                fontSize = 12.sp,
-                                color = TextSecondary
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "${data.puntos.size} reportes con ubicación",
+                                    fontSize = 12.sp,
+                                    color = TextSecondary
+                                )
+                                // Indicador de ubicación activa en la leyenda
+                                if (ubicacionActual != null) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(10.dp)
+                                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                                .background(GreenPrimary)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Tu ubicación",
+                                            fontSize = 12.sp,
+                                            color = TextSecondary
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
         }
     }
+}
+
+// ── Obtiene la última ubicación conocida del dispositivo ───────────────────
+private fun obtenerUbicacion(context: Context): GeoPoint? {
+    return try {
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+            .firstNotNullOfOrNull { proveedor ->
+                try {
+                    @Suppress("MissingPermission")
+                    locationManager.getLastKnownLocation(proveedor)?.let { loc ->
+                        GeoPoint(loc.latitude, loc.longitude)
+                    }
+                } catch (e: Exception) { null }
+            }
+    } catch (e: Exception) { null }
+}
+
+// ── Overlay: punto verde con radio transparente ────────────────────────────
+private fun agregarUbicacionActual(mapView: MapView, ubicacion: GeoPoint) {
+    val overlay = object : Overlay() {
+        override fun draw(canvas: Canvas, mapView: MapView, shadow: Boolean) {
+            if (shadow) return
+
+            val screenPoint = mapView.projection.toPixels(ubicacion, null)
+            val x = screenPoint.x.toFloat()
+            val y = screenPoint.y.toFloat()
+
+            // Radio verde muy transparente
+            canvas.drawCircle(x, y, 120f, Paint().apply {
+                color = android.graphics.Color.argb(40, 76, 175, 80)
+                style = Paint.Style.FILL
+                isAntiAlias = true
+            })
+
+            // Borde del radio
+            canvas.drawCircle(x, y, 120f, Paint().apply {
+                color = android.graphics.Color.argb(120, 76, 175, 80)
+                style = Paint.Style.STROKE
+                strokeWidth = 2f
+                isAntiAlias = true
+            })
+
+            // Halo blanco
+            canvas.drawCircle(x, y, 18f, Paint().apply {
+                color = android.graphics.Color.argb(200, 255, 255, 255)
+                style = Paint.Style.FILL
+                isAntiAlias = true
+            })
+
+            // Punto central verde sólido
+            canvas.drawCircle(x, y, 12f, Paint().apply {
+                color = android.graphics.Color.argb(255, 56, 142, 60)
+                style = Paint.Style.FILL
+                isAntiAlias = true
+            })
+        }
+    }
+    mapView.overlays.add(overlay)
 }
 
 private fun crearMapView(context: Context): MapView {
@@ -216,14 +407,12 @@ private fun agregarCalor(mapView: MapView, puntos: List<HeatmapPoint>) {
         override fun draw(canvas: Canvas, mapView: MapView, shadow: Boolean) {
             if (shadow) return
 
-            // Contar vecinos reales dentro de ~1km para cada punto
-            // Se excluye el punto mismo (por eso se resta 1)
             val vecinosPorPunto = puntos.map { punto ->
                 puntos.count { otro ->
                     val dlat = punto.latitud - otro.latitud
                     val dlng = punto.longitud - otro.longitud
-                    Math.sqrt(dlat * dlat + dlng * dlng) < 0.01  // ~1km de radio
-                } - 1  // no contarse a sí mismo
+                    Math.sqrt(dlat * dlat + dlng * dlng) < 0.01
+                } - 1
             }
 
             puntos.forEachIndexed { index, punto ->
@@ -231,21 +420,11 @@ private fun agregarCalor(mapView: MapView, puntos: List<HeatmapPoint>) {
                 val screenPoint = mapView.projection.toPixels(geoPoint, null)
                 val vecinos = vecinosPorPunto[index]
 
-                // ── Umbrales absolutos ──────────────────────────────────────
-                // Baja:    0–1 vecinos  → azul    (punto aislado o casi solo)
-                // Media:   2–4 vecinos  → amarillo (pequeño grupo)
-                // Alta:    5–9 vecinos  → naranja  (zona activa)
-                // Crítica: 10+ vecinos  → rojo     (zona de alta concentración)
-                //
-                // Si tu ciudad tiene muchos reportes y todo queda azul,
-                // baja los umbrales (ej. 1 / 3 / 6).
-                // Si todo queda rojo, súbelos (ej. 5 / 15 / 30).
-                // ────────────────────────────────────────────────────────────
                 val color = when {
-                    vecinos >= 10 -> android.graphics.Color.argb(180, 220, 30,  30)   // rojo
-                    vecinos >= 5  -> android.graphics.Color.argb(160, 255, 120,  0)   // naranja
-                    vecinos >= 2  -> android.graphics.Color.argb(140, 255, 220,  0)   // amarillo
-                    else          -> android.graphics.Color.argb(120,   0, 150, 255)  // azul
+                    vecinos >= 10 -> android.graphics.Color.argb(180, 220, 30,  30)
+                    vecinos >= 5  -> android.graphics.Color.argb(160, 255, 120,  0)
+                    vecinos >= 2  -> android.graphics.Color.argb(140, 255, 220,  0)
+                    else          -> android.graphics.Color.argb(120,   0, 150, 255)
                 }
 
                 val radio = when {
