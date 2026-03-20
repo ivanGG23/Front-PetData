@@ -328,57 +328,65 @@ fun ReportFormScreen(
                         onClick = {
                             if (locationPermission.status.isGranted) {
                                 ubicacionCargando = true
-                                ubicacionError    = false
+                                ubicacionError = false
                                 val client = LocationServices.getFusedLocationProviderClient(context)
-                                try {
-                                    client.lastLocation.addOnSuccessListener { location ->
-                                        if (location != null) {
-                                            latitud         = location.latitude
-                                            longitud        = location.longitude
-                                            precisionMetros = location.accuracy.toDouble()
-                                            ubicacionCargando = false
-                                        } else {
-                                            val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
-                                                com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
-                                                1000L
-                                            ).setMaxUpdates(1)
-                                                .setWaitForAccurateLocation(false)
-                                                .setMinUpdateIntervalMillis(500L)
-                                                .build()
 
-                                            val callback = object : com.google.android.gms.location.LocationCallback() {
-                                                override fun onLocationResult(result: com.google.android.gms.location.LocationResult) {
-                                                    result.lastLocation?.let {
-                                                        latitud         = it.latitude
-                                                        longitud        = it.longitude
-                                                        precisionMetros = it.accuracy.toDouble()
-                                                        ubicacionCargando = false
-                                                    } ?: run {
-                                                        ubicacionCargando = false
-                                                        ubicacionError    = true
-                                                    }
-                                                    client.removeLocationUpdates(this)
-                                                }
+                                val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
+                                    com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
+                                    1000L
+                                )
+                                    .setMaxUpdates(1)
+                                    .setWaitForAccurateLocation(true)
+                                    .setMinUpdateIntervalMillis(500L)
+                                    .setMaxUpdateDelayMillis(10_000L)
+                                    .build()
+
+                                val callback = object : com.google.android.gms.location.LocationCallback() {
+                                    override fun onLocationResult(result: com.google.android.gms.location.LocationResult) {
+                                        client.removeLocationUpdates(this)
+                                        val location = result.lastLocation
+                                        if (location != null) {
+                                            if (location.accuracy <= 50f) {
+                                                latitud = location.latitude
+                                                longitud = location.longitude
+                                                precisionMetros = location.accuracy.toDouble()
+                                                ubicacionCargando = false
+                                            } else {
+                                                ubicacionError = true
+                                                ubicacionCargando = false
                                             }
-                                            client.requestLocationUpdates(
-                                                locationRequest,
-                                                callback,
-                                                android.os.Looper.getMainLooper()
-                                            )
+                                        } else {
+                                            ubicacionError = true
+                                            ubicacionCargando = false
                                         }
-                                    }.addOnFailureListener {
-                                        ubicacionCargando = false
-                                        ubicacionError    = true
                                     }
+                                }
+
+                                try {
+                                    client.requestLocationUpdates(
+                                        locationRequest,
+                                        callback,
+                                        android.os.Looper.getMainLooper()
+                                    )
+                                    android.os.Handler(android.os.Looper.getMainLooper())
+                                        .postDelayed({
+                                            client.removeLocationUpdates(callback)
+                                            if (ubicacionCargando) {
+                                                ubicacionCargando = false
+                                                ubicacionError = true
+                                            }
+                                        }, 15_000L)
                                 } catch (e: SecurityException) {
                                     ubicacionCargando = false
-                                    ubicacionError    = true
+                                    ubicacionError = true
                                 }
                             } else {
                                 locationPermission.launchPermissionRequest()
                             }
                         },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = when {
@@ -422,7 +430,7 @@ fun ReportFormScreen(
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
-                    }
+                    }  // ← solo una llave de cierre, nada más después
 
                     Spacer(modifier = Modifier.height(16.dp))
 
