@@ -31,6 +31,7 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface ApiService {
+
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
 
@@ -45,7 +46,7 @@ interface ApiService {
         @Query("prioridad_id")   prioridadId:   Int?    = null,
         @Query("fecha_inicio")   fechaInicio:   String? = null,
         @Query("fecha_fin")      fechaFin:      String? = null,
-        @Query("rescatista_id")  rescatistaId: Int? = null
+        @Query("rescatista_id")  rescatistaId:  Int?    = null
     ): List<ReporteResponse>
 
     @GET("reports/{id}")
@@ -82,7 +83,7 @@ interface ApiService {
     suspend fun asignarReporte(
         @Header("Authorization") token: String,
         @Path("id") id: Int,
-        @Body body: Map<String, String> = emptyMap<String, String>()
+        @Body body: Map<String, String> = emptyMap()
     )
 
     @DELETE("reports/{id}/asignar")
@@ -110,19 +111,20 @@ interface ApiService {
         @Path("usuario_id") usuarioId: Int
     ): ReputacionResponse
 
+    // ── createReport: ahora acepta List<MultipartBody.Part> para múltiples imágenes ──
     @Multipart
     @POST("reports")
     suspend fun createReport(
         @Header("Authorization") token: String,
         @Part("estado_animal_id") estadoAnimalId: RequestBody,
-        @Part("tipo_animal_id") tipoAnimalId: RequestBody,
-        @Part("prioridad_id") prioridadId: RequestBody,
-        @Part("descripcion") descripcion: RequestBody,
-        @Part("latitud") latitud: RequestBody,
-        @Part("longitud") longitud: RequestBody,
+        @Part("tipo_animal_id")   tipoAnimalId:   RequestBody,
+        @Part("prioridad_id")     prioridadId:    RequestBody,
+        @Part("descripcion")      descripcion:    RequestBody,
+        @Part("latitud")          latitud:        RequestBody,
+        @Part("longitud")         longitud:       RequestBody,
         @Part("precision_metros") precisionMetros: RequestBody?,
         @Part("contacto_opcional") contactoOpcional: RequestBody?,
-        @Part imagen: MultipartBody.Part
+        @Part imagenes: List<MultipartBody.Part>  // ← antes era una sola Part
     ): CreateReporteResponse
 
     @GET("reports/heatmap")
@@ -165,8 +167,8 @@ interface ApiService {
     @POST("reports/evidencia")
     suspend fun addEvidencia(
         @Header("Authorization") token: String,
-        @Part("reporte_id") reporte_id: okhttp3.RequestBody,
-        @Part("tipo") tipo: okhttp3.RequestBody,
-        @Part imagen: okhttp3.MultipartBody.Part
+        @Part("reporte_id") reporte_id: RequestBody,
+        @Part("tipo")        tipo:       RequestBody,
+        @Part imagen: MultipartBody.Part
     ): AddEvidenciaResponse
 }
