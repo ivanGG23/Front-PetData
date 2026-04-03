@@ -1,10 +1,12 @@
 package com.example.petdata.data.network
 
+import com.example.petdata.data.model.AddEvidenciaResponse
 import com.example.petdata.data.model.CambiarEstadoRequest
 import com.example.petdata.data.model.ComentarioResponse
 import com.example.petdata.data.model.CreateComentarioRequest
 import com.example.petdata.data.model.CreateReporteResponse
 import com.example.petdata.data.model.Evidencia
+import com.example.petdata.data.model.GlobalStats
 import com.example.petdata.data.model.HeatmapPoint
 import com.example.petdata.data.model.HistorialEstado
 import com.example.petdata.data.model.LoginRequest
@@ -13,6 +15,7 @@ import com.example.petdata.data.model.RegisterRequest
 import com.example.petdata.data.model.RegisterResponse
 import com.example.petdata.data.model.ReporteResponse
 import com.example.petdata.data.model.ReputacionResponse
+import com.example.petdata.data.model.UserData
 import com.example.petdata.data.model.UserStats
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -28,6 +31,7 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface ApiService {
+
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
 
@@ -36,7 +40,13 @@ interface ApiService {
 
     @GET("reports")
     suspend fun getReports(
-        @Header("Authorization") token: String
+        @Header("Authorization") token: String,
+        @Query("tipo_animal_id") tipoAnimalId:  Int?    = null,
+        @Query("estado_id")      estadoId:      Int?    = null,
+        @Query("prioridad_id")   prioridadId:   Int?    = null,
+        @Query("fecha_inicio")   fechaInicio:   String? = null,
+        @Query("fecha_fin")      fechaFin:      String? = null,
+        @Query("rescatista_id")  rescatistaId:  Int?    = null
     ): List<ReporteResponse>
 
     @GET("reports/{id}")
@@ -73,7 +83,7 @@ interface ApiService {
     suspend fun asignarReporte(
         @Header("Authorization") token: String,
         @Path("id") id: Int,
-        @Body body: Map<String, String> = emptyMap<String, String>()
+        @Body body: Map<String, String> = emptyMap()
     )
 
     @DELETE("reports/{id}/asignar")
@@ -101,18 +111,20 @@ interface ApiService {
         @Path("usuario_id") usuarioId: Int
     ): ReputacionResponse
 
+    // ── createReport: ahora acepta List<MultipartBody.Part> para múltiples imágenes ──
     @Multipart
     @POST("reports")
     suspend fun createReport(
         @Header("Authorization") token: String,
         @Part("estado_animal_id") estadoAnimalId: RequestBody,
-        @Part("prioridad_id") prioridadId: RequestBody,
-        @Part("descripcion") descripcion: RequestBody,
-        @Part("latitud") latitud: RequestBody,
-        @Part("longitud") longitud: RequestBody,
+        @Part("tipo_animal_id")   tipoAnimalId:   RequestBody,
+        @Part("prioridad_id")     prioridadId:    RequestBody,
+        @Part("descripcion")      descripcion:    RequestBody,
+        @Part("latitud")          latitud:        RequestBody,
+        @Part("longitud")         longitud:       RequestBody,
         @Part("precision_metros") precisionMetros: RequestBody?,
         @Part("contacto_opcional") contactoOpcional: RequestBody?,
-        @Part imagen: MultipartBody.Part
+        @Part imagenes: List<MultipartBody.Part>  // ← antes era una sola Part
     ): CreateReporteResponse
 
     @GET("reports/heatmap")
@@ -120,4 +132,43 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Query("estado_reporte_id") estadoReporteId: Int? = null
     ): List<HeatmapPoint>
+
+    @GET("reports/stats/global")
+    suspend fun getGlobalStats(
+        @Header("Authorization") token: String
+    ): GlobalStats
+
+    @GET("auth/users/{id}")
+    suspend fun getUserById(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    ): UserData
+
+    @PUT("auth/users/{id}")
+    suspend fun updateUser(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int,
+        @Body body: Map<String, String>
+    ): UserData
+
+    @POST("auth/users/{id}/solicitar-rescatista")
+    suspend fun solicitarRescatista(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    )
+
+    @POST("auth/users/{id}/dejar-rescatista")
+    suspend fun dejarRescatista(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    )
+
+    @Multipart
+    @POST("reports/evidencia")
+    suspend fun addEvidencia(
+        @Header("Authorization") token: String,
+        @Part("reporte_id") reporte_id: RequestBody,
+        @Part("tipo")        tipo:       RequestBody,
+        @Part imagen: MultipartBody.Part
+    ): AddEvidenciaResponse
 }

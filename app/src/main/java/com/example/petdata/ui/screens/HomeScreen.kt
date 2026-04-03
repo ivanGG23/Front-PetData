@@ -1,42 +1,41 @@
 package com.example.petdata.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.example.petdata.data.model.GlobalStats
 import com.example.petdata.data.model.ReporteResponse
-import com.example.petdata.navigation.Screen
 import com.example.petdata.ui.components.BottomNavigationBar
 import com.example.petdata.ui.theme.*
 import com.example.petdata.ui.viemodel.HomeState
 import com.example.petdata.ui.viemodel.HomeViewModel
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.filled.LocationOn
+import com.example.petdata.data.model.Direccion
+import com.example.petdata.navigation.Screen
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data models (solo UI, sin lógica)
@@ -48,47 +47,15 @@ data class ReportItem(
     val location: String,
     val timeAgo: String,
     val health: String?,
-    val priority: String,         // "MEDIA" | "ALTA" | "BAJA"
-    val status: String,           // "En Proceso" | "Pendiente" | "Rescatado"
+    val priority: String,
+    val status: String,
     val imageUrl: String
-)
-
-val sampleReports = listOf(
-    ReportItem(
-        title       = "Perro - Rescate",
-        description = "Perro mestizo encontrado cerca de la fuente. Parece desorientado pero dócil. Collar rojo sin...",
-        location    = "Parque Central, Zona Norte",
-        timeAgo     = "Hace 2 horas",
-        health      = "Salud: Estable",
-        priority    = "MEDIA",
-        status      = "En Proceso",
-        imageUrl    = "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=600"
-    ),
-    ReportItem(
-        title       = "Gato - Reporte",
-        description = "Colonia de gatos en edificio abandonado. Se necesitan voluntarios para captura y...",
-        location    = "Av. Las Américas",
-        timeAgo     = "Hace 5 horas",
-        health      = null,
-        priority    = "BAJA",
-        status      = "Pendiente",
-        imageUrl    = "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600"
-    ),
-    ReportItem(
-        title       = "Perro - Rescate",
-        description = "Cachorros encontrados en caja. Ya fueron...",
-        location    = "Calle Principal",
-        timeAgo     = "Hace 8 horas",
-        health      = null,
-        priority    = "ALTA",
-        status      = "Rescatado",
-        imageUrl    = "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=600"
-    )
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Root screen
 // ─────────────────────────────────────────────────────────────────────────────
+
 @Composable
 fun HomeScreen(
     rolId: Int = 1,
@@ -98,20 +65,7 @@ fun HomeScreen(
     onNavigate: (route: String) -> Unit = {}
 ) {
     val homeState by viewModel.homeState.collectAsStateWithLifecycle()
-    var selectedFilter by remember { mutableStateOf("Todos") }
-    val filters = listOf("Todos", "Perros", "Gatos", "Urgentes")
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.loadReportes()
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
+    val globalStats by viewModel.globalStats.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar    = { RescateTopBar() },
@@ -132,7 +86,7 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             // ── Monthly summary ──
-            MonthlySummarySection()
+            MonthlySummarySection(stats = globalStats)
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -150,17 +104,18 @@ fun HomeScreen(
                     fontSize   = 18.sp,
                     color      = TextPrimary
                 )
-                Text(
-                    text     = "Ver todos",
-                    color    = GreenPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Filter chips (horizontally scrollable)
+            // ── Chips tipo animal ──
+            val filtroTipo      by viewModel.filtroTipo.collectAsStateWithLifecycle()
+            val filtroEstado    by viewModel.filtroEstado.collectAsStateWithLifecycle()
+            val filtroPrioridad by viewModel.filtroPrioridad.collectAsStateWithLifecycle()
+            val filtroFecha     by viewModel.filtroFecha.collectAsStateWithLifecycle()
+
+            val tipoFiltros = listOf("Todos" to null, "Perros" to 1, "Gatos" to 2, "Otro" to 3)
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -168,12 +123,125 @@ fun HomeScreen(
                     .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                filters.forEach { filter ->
+                tipoFiltros.forEach { (label, id) ->
                     FilterChip(
-                        label    = filter,
-                        selected = selectedFilter == filter,
-                        onClick  = { selectedFilter = filter }
+                        label    = label,
+                        selected = filtroTipo == id,
+                        onClick  = { viewModel.setFiltroTipo(id) }
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // ── Dropdowns de filtros ──
+            var expandedEstado    by remember { mutableStateOf(false) }
+            var expandedPrioridad by remember { mutableStateOf(false) }
+            var expandedFecha     by remember { mutableStateOf(false) }
+
+            val estadoOpciones    = listOf(null to "Estado", 1 to "Pendiente", 2 to "En revisión", 3 to "En proceso", 4 to "Resuelto", 5 to "Falso")
+            val prioridadOpciones = listOf(null to "Prioridad", 1 to "Baja", 2 to "Media", 3 to "Alta", 4 to "Crítica")
+            val fechaOpciones     = listOf(null to "Fecha", "hoy" to "Hoy", "semana" to "Esta semana", "mes" to "Este mes")
+
+            val estadoLabel    = estadoOpciones.find    { it.first == filtroEstado }?.second    ?: "Estado"
+            val prioridadLabel = prioridadOpciones.find { it.first == filtroPrioridad }?.second ?: "Prioridad"
+            val fechaLabel     = fechaOpciones.find     { it.first == filtroFecha }?.second     ?: "Fecha"
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Dropdown Estado
+                Box(modifier = Modifier.weight(1f)) {
+                    OutlinedButton(
+                        onClick = { expandedEstado = true },
+                        shape  = RoundedCornerShape(50),
+                        border = ButtonDefaults.outlinedButtonBorder,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = if (filtroEstado != null) GreenPrimary else Color.Transparent,
+                            contentColor   = if (filtroEstado != null) Color.White else TextPrimary
+                        ),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(estadoLabel, fontSize = 12.sp, maxLines = 1)
+                        Icon(Icons.Default.ArrowDropDown, null, modifier = Modifier.size(16.dp))
+                    }
+                    DropdownMenu(expanded = expandedEstado, onDismissRequest = { expandedEstado = false }) {
+                        estadoOpciones.forEach { (id, nombre) ->
+                            DropdownMenuItem(text = { Text(nombre) }, onClick = {
+                                viewModel.setFiltroEstado(id)
+                                expandedEstado = false
+                            })
+                        }
+                    }
+                }
+
+                // Dropdown Prioridad
+                Box(modifier = Modifier.weight(1f)) {
+                    OutlinedButton(
+                        onClick = { expandedPrioridad = true },
+                        shape  = RoundedCornerShape(50),
+                        border = ButtonDefaults.outlinedButtonBorder,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = if (filtroPrioridad != null) GreenPrimary else Color.Transparent,
+                            contentColor   = if (filtroPrioridad != null) Color.White else TextPrimary
+                        ),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(prioridadLabel, fontSize = 12.sp, maxLines = 1)
+                        Icon(Icons.Default.ArrowDropDown, null, modifier = Modifier.size(16.dp))
+                    }
+                    DropdownMenu(expanded = expandedPrioridad, onDismissRequest = { expandedPrioridad = false }) {
+                        prioridadOpciones.forEach { (id, nombre) ->
+                            DropdownMenuItem(text = { Text(nombre) }, onClick = {
+                                viewModel.setFiltroPrioridad(id)
+                                expandedPrioridad = false
+                            })
+                        }
+                    }
+                }
+
+                // Dropdown Fecha
+                Box(modifier = Modifier.weight(1f)) {
+                    OutlinedButton(
+                        onClick = { expandedFecha = true },
+                        shape  = RoundedCornerShape(50),
+                        border = ButtonDefaults.outlinedButtonBorder,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = if (filtroFecha != null) GreenPrimary else Color.Transparent,
+                            contentColor   = if (filtroFecha != null) Color.White else TextPrimary
+                        ),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(fechaLabel, fontSize = 12.sp, maxLines = 1)
+                        Icon(Icons.Default.ArrowDropDown, null, modifier = Modifier.size(16.dp))
+                    }
+                    DropdownMenu(expanded = expandedFecha, onDismissRequest = { expandedFecha = false }) {
+                        fechaOpciones.forEach { (valor, nombre) ->
+                            DropdownMenuItem(text = { Text(nombre) }, onClick = {
+                                viewModel.setFiltroFecha(valor)
+                                expandedFecha = false
+                            })
+                        }
+                    }
+                }
+            }
+
+            // Botón limpiar filtros (solo visible si hay algún filtro activo)
+            if (filtroTipo != null || filtroEstado != null || filtroPrioridad != null || filtroFecha != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(
+                    onClick = { viewModel.limpiarFiltros() },
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                ) {
+                    Icon(Icons.Default.Close, null, modifier = Modifier.size(14.dp), tint = GreenPrimary)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Limpiar filtros", fontSize = 12.sp, color = GreenPrimary)
                 }
             }
 
@@ -236,7 +304,8 @@ fun HomeScreen(
                         reportes.forEach { reporte ->
                             ReporteCard(
                                 reporte = reporte,
-                                onNavigateToDetail = onNavigateToDetail
+                                onNavigateToDetail = onNavigateToDetail,
+                                onNavigate         = onNavigate
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                         }
@@ -277,21 +346,7 @@ fun RescateTopBar() {
                         fontSize   = 16.sp,
                         color      = White
                     )
-                    Text(
-                        text     = "APP OFICIAL",
-                        fontSize = 10.sp,
-                        color    = White.copy(alpha = 0.8f)
-                    )
                 }
-            }
-        },
-        actions = {
-            IconButton(onClick = {}) {
-                Icon(
-                    imageVector        = Icons.Default.Notifications,
-                    contentDescription = "Notificaciones",
-                    tint               = White
-                )
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
@@ -378,10 +433,10 @@ fun HeroBanner(onNavigateToReport: (mode: String) -> Unit = {}) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-fun MonthlySummarySection() {
+fun MonthlySummarySection(stats: GlobalStats?) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         Text(
-            text       = "Resumen Mensual",
+            text       = "Resumen De Reportes",
             fontWeight = FontWeight.Bold,
             fontSize   = 18.sp,
             color      = TextPrimary
@@ -393,25 +448,25 @@ fun MonthlySummarySection() {
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             StatCard(
-                label      = "Casos Activos",
-                value      = "142",
-                change     = "↑ 12%",
-                changeUp   = true,
-                modifier   = Modifier.weight(1f)
+                label    = "En Proceso",
+                value    = stats?.activos?.toString() ?: "...",
+                change   = null,
+                changeUp = true,
+                modifier = Modifier.weight(1f)
             )
             StatCard(
-                label      = "Rescatados",
-                value      = "856",
-                change     = "↑ 5%",
-                changeUp   = true,
-                modifier   = Modifier.weight(1f)
+                label    = "Rescatados",
+                value    = stats?.rescatados?.toString() ?: "...",
+                change   = null,
+                changeUp = true,
+                modifier = Modifier.weight(1f)
             )
             StatCard(
-                label      = "Ado...",     // truncated like in screenshot
-                value      = "64",
-                change     = null,
-                changeUp   = true,
-                modifier   = Modifier.weight(1f)
+                label    = "Pendientes",
+                value    = stats?.pendientes?.toString() ?: "...",
+                change   = null,
+                changeUp = true,
+                modifier = Modifier.weight(1f)
             )
         }
     }
@@ -482,39 +537,74 @@ fun FilterChip(label: String, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Report card
-// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+fun DireccionRow(direccion: Direccion) {
+    // Construye la línea más informativa posible con lo que Nominatim haya devuelto
+    val partes = listOfNotNull(
+        direccion.colonia ?: direccion.barrio,
+        direccion.municipio ?: direccion.ciudad
+    )
+    val texto = if (partes.isNotEmpty())
+        partes.joinToString(", ")
+    else
+        direccion.display_name?.take(60) ?: "Ubicación registrada"
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Icon(
+            imageVector        = Icons.Default.LocationOn,
+            contentDescription = null,
+            tint               = GreenPrimary,
+            modifier           = Modifier.size(14.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text     = texto,
+            fontSize = 12.sp,
+            color    = TextSecondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
 @Composable
 fun ReporteCard(
     reporte: ReporteResponse,
-    onNavigateToDetail: (Int) -> Unit = {}
+    onNavigateToDetail: (Int) -> Unit = {},
+    onNavigate: (String) -> Unit = {}
 ) {
+    val context   = LocalContext.current
     val prioridad = when (reporte.prioridad_id) {
-        4 -> "CRÍTICA"
-        3 -> "ALTA"
-        2 -> "MEDIA"
+        4    -> "CRÍTICA"
+        3    -> "ALTA"
+        2    -> "MEDIA"
         else -> "BAJA"
     }
-    val estado = reporte.estado_reporte.nombre
+    val estado  = reporte.estado_reporte.nombre
     val timeAgo = calcularTiempo(reporte.fecha_creacion)
+    val lat     = reporte.locacion?.latitud
+    val lng     = reporte.locacion?.longitud
 
     Card(
-        modifier = Modifier
+        modifier  = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = White),
+        shape     = RoundedCornerShape(16.dp),
+        colors    = CardDefaults.cardColors(containerColor = White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column {
-            // ── Imagen del reporte ──
+
+            // ── Imagen del reporte ──────────────────────────────────────────
             if (reporte.imagen_url != null) {
                 AsyncImage(
-                    model = reporte.imagen_url,
+                    model              = reporte.imagen_url,
                     contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
+                    contentScale       = ContentScale.Crop,
+                    modifier           = Modifier
                         .fillMaxWidth()
                         .height(160.dp)
                         .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
@@ -531,24 +621,25 @@ fun ReporteCard(
                     Icon(
                         Icons.Default.Image,
                         contentDescription = null,
-                        tint = Color(0xFFBDBDBD),
+                        tint     = Color(0xFFBDBDBD),
                         modifier = Modifier.size(40.dp)
                     )
                 }
             }
 
-            // ── Contenido ──
+            // ── Contenido ───────────────────────────────────────────────────
             Column(modifier = Modifier.padding(14.dp)) {
+
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier              = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment     = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = reporte.estado_animal.nombre,
+                        text       = reporte.estado_animal.nombre,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = TextPrimary
+                        fontSize   = 16.sp,
+                        color      = TextPrimary
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         PriorityBadge(priority = prioridad)
@@ -556,14 +647,33 @@ fun ReporteCard(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // ── Colonia / municipio ──
+                if (reporte.direccion != null) {
+                    DireccionRow(direccion = reporte.direccion)
+                    Spacer(modifier = Modifier.height(2.dp))
+                }
+
+                // ── display_name completo ──
+                if (!reporte.direccion?.display_name.isNullOrBlank()) {
+                    Text(
+                        text       = reporte.direccion!!.display_name!!,
+                        fontSize   = 11.sp,
+                        color      = TextSecondary,
+                        maxLines   = 2,
+                        overflow   = TextOverflow.Ellipsis,
+                        lineHeight = 15.sp
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                }
 
                 Text(
-                    text = reporte.descripcion,
-                    fontSize = 13.sp,
-                    color = TextSecondary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+                    text       = reporte.descripcion,
+                    fontSize   = 13.sp,
+                    color      = TextSecondary,
+                    maxLines   = 2,
+                    overflow   = TextOverflow.Ellipsis,
                     lineHeight = 18.sp
                 )
 
@@ -573,7 +683,7 @@ fun ReporteCard(
                     Icon(
                         Icons.Default.Schedule,
                         contentDescription = null,
-                        tint = GreenPrimary,
+                        tint     = GreenPrimary,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -582,12 +692,33 @@ fun ReporteCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // ── Botón Abrir Mapa (solo si hay coordenadas) ──
+                if (lat != null && lng != null) {
+                    Button(
+                        onClick = {
+                            onNavigate(Screen.Map.createRoute(lat, lng))
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape  = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
+                    ) {
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Abrir Mapa", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
                 OutlinedButton(
-                    onClick = { onNavigateToDetail(reporte.id) },
+                    onClick  = { onNavigateToDetail(reporte.id) },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    border = ButtonDefaults.outlinedButtonBorder,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
+                    shape    = RoundedCornerShape(8.dp),
+                    border   = ButtonDefaults.outlinedButtonBorder,
+                    colors   = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
                 ) {
                     Text("Ver Detalles", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 }
@@ -649,7 +780,7 @@ fun StatusBadge(status: String, modifier: Modifier = Modifier) {
     val color = when (status) {
         "En Proceso" -> BadgeEnProceso
         "Rescatado"  -> BadgeRescatado
-        else         -> BadgePendiente   // Pendiente
+        else         -> BadgePendiente
     }
     Box(
         modifier = modifier

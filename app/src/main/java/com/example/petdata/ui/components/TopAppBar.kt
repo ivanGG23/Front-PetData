@@ -41,30 +41,10 @@ fun RescateTopBar() {
                         fontSize = 16.sp,
                         color = White
                     )
-                    Text(
-                        text = "APP OFICIAL",
-                        fontSize = 10.sp,
-                        color = White.copy(alpha = 0.8f)
-                    )
                 }
             }
         },
-        actions = {
-            IconButton(onClick = {}) {
-                Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = "Notificaciones",
-                    tint = White
-                )
-            }
-            IconButton(onClick = {}) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Perfil",
-                    tint = White
-                )
-            }
-        },
+
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = GreenPrimary
         )

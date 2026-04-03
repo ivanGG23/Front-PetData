@@ -18,13 +18,16 @@ fun BottomNavigationBar(
     rolId: Int = 1,
     onNavigate: (String) -> Unit = {}
 ) {
+    // Índices correctos según rol
+    val settingsIndex = if (rolId == 2) 4 else 3
+
     NavigationBar(
         containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = androidx.compose.ui.unit.Dp(4f)
     ) {
         NavigationBarItem(
             selected = selectedIndex == 0,
-            onClick = { onNavigate("home") },
+            onClick = { if (selectedIndex != 0) onNavigate("home") },
             icon = { Icon(Icons.Default.Home, contentDescription = "Inicio") },
             label = { Text("Inicio") },
             colors = NavigationBarItemDefaults.colors(
@@ -38,7 +41,7 @@ fun BottomNavigationBar(
 
         NavigationBarItem(
             selected = selectedIndex == 1,
-            onClick = { onNavigate("report/crear") },
+            onClick = { if (selectedIndex != 1) onNavigate("report/crear") },
             icon = { Icon(Icons.Default.Add, contentDescription = "Reportar") },
             label = { Text("Reportar") },
             colors = NavigationBarItemDefaults.colors(
@@ -52,7 +55,7 @@ fun BottomNavigationBar(
 
         NavigationBarItem(
             selected = selectedIndex == 2,
-            onClick = { onNavigate("map") },
+            onClick = { if (selectedIndex != 2) onNavigate("map") },
             icon = { Icon(Icons.Default.Map, contentDescription = "Mapa") },
             label = { Text("Mapa") },
             colors = NavigationBarItemDefaults.colors(
@@ -64,25 +67,10 @@ fun BottomNavigationBar(
             )
         )
 
-        NavigationBarItem(
-            selected = selectedIndex == 3,
-            onClick = { onNavigate("settings") },
-            icon = { Icon(Icons.Default.Settings, contentDescription = "Ajustes") },
-            label = { Text("Ajustes") },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = GreenPrimary,
-                selectedTextColor = GreenPrimary,
-                unselectedIconColor = NavUnselected,
-                unselectedTextColor = NavUnselected,
-                indicatorColor = Color.Transparent
-            )
-        )
-
-        // Solo rescatistas ven Dashboard
         if (rolId == 2) {
             NavigationBarItem(
                 selected = selectedIndex == 3,
-                onClick = { onNavigate("dashboard") },
+                onClick = { if (selectedIndex != 3) onNavigate("dashboard") },
                 icon = { Icon(Icons.Default.BarChart, contentDescription = "Datos") },
                 label = { Text("Datos") },
                 colors = NavigationBarItemDefaults.colors(
@@ -94,5 +82,19 @@ fun BottomNavigationBar(
                 )
             )
         }
+
+        NavigationBarItem(
+            selected = selectedIndex == settingsIndex,
+            onClick = { if (selectedIndex != settingsIndex) onNavigate("settings") },
+            icon = { Icon(Icons.Default.Settings, contentDescription = "Ajustes") },
+            label = { Text("Ajustes") },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = GreenPrimary,
+                selectedTextColor = GreenPrimary,
+                unselectedIconColor = NavUnselected,
+                unselectedTextColor = NavUnselected,
+                indicatorColor = Color.Transparent
+            )
+        )
     }
 }
